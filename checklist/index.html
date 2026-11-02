@@ -47,6 +47,10 @@ tr.child td{background:#fcfcfb;font-size:15px}tr.child td.tname{padding-left:44p
 .copybtn{display:inline-flex;align-items:center;gap:6px;margin:0 10px 0 0;padding:6px 12px;border-radius:8px;border:1px solid #a8a29e;background:#fff;cursor:pointer;font-size:13px;font-weight:600}
 .copybtn:hover{background:var(--soft)}.copybtn.ok{border-color:#86efac;background:var(--grnbg);color:var(--grn)}
 .copybtn svg{width:14px;height:14px;flex:0 0 auto}
+.copybtn.rowcopy{margin:0;padding:4px 8px;font-size:12px;white-space:nowrap}
+.copybtn.rowcopy svg{width:12px;height:12px}
+td.act{width:1%;white-space:nowrap;vertical-align:middle}
+
 .toolbar{display:flex;align-items:center;gap:8px;margin:0 0 8px;flex-wrap:wrap}
 .toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(20px);background:#1c1917;color:#fafaf9;padding:12px 18px;border-radius:10px;font-size:14px;font-weight:500;box-shadow:0 8px 24px rgba(0,0,0,.25);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:10000;max-width:min(92vw,420px);text-align:center}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
@@ -377,6 +381,8 @@ function buildPrompt(id){
  }
  L.push('');L.push(`Source: https://wazloes.github.io/tech-317-qa-dashboard/checklist/#${id}`);
  return L.join('\n')}
+function copyBtnHtml(id){
+ return `<button type="button" class="copybtn rowcopy" title="Copy Context" onclick="event.stopPropagation();copyPrompt('${id}',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg><span>Copy Context</span></button>`}
 function showToast(msg){
  const el=document.getElementById('toast');if(!el)return;
  el.textContent=msg;el.classList.add('show');
@@ -405,18 +411,18 @@ function openM(id){const f=find(id);if(!f)return;const t=f.t;let h='';
  document.getElementById('modal').classList.add('open');document.body.style.overflow='hidden';location.hash=id;window.scrollTo(0,0);document.getElementById('modal').scrollTop=0}
 function closeM(){document.getElementById('modal').classList.remove('open');document.body.style.overflow='';if(location.hash)history.replaceState(null,'',location.pathname)}
 const OPEN_TESTS=new Set();
-const OPEN_SECS=new Set(['pre','jwt','otp','stripe','hours','pay','invoice','reg']); // sections with content start open; empty ones collapsed
+const OPEN_SECS=new Set(); // all sections start collapsed
 function toggleSec(id,ev){ev.stopPropagation();const el=document.getElementById('sec-'+id);if(!el)return;el.classList.toggle('collapsed');if(el.classList.contains('collapsed'))OPEN_SECS.delete(id);else OPEN_SECS.add(id)}
 function toggleTest(id,ev){ev.stopPropagation();if(OPEN_TESTS.has(id))OPEN_TESTS.delete(id);else OPEN_TESTS.add(id);render()}
 function render(){const c=s=>TESTS.filter(t=>t.status===s).length;const calls=TESTS.reduce((a,t)=>a+(t.children||[]).length,0);
  document.getElementById('banner').innerHTML=`<strong>In progress.</strong> ${c('pass')} pass · ${c('warn')} pass with ! · ${c('fail')} fail · ${c('skip')} skipped · ${c('blocked')} blocked · ${c('wait')} waiting. ${calls} API calls. Expand a test to see its calls; click a row for the report.`;
  function rows(sec){const l=TESTS.filter(t=>t.section===sec);if(!l.length)return `<p class="sec-empty">Not started.</p>`;
-  return `<table><thead><tr><th class="idcol">ID</th><th style="width:120px">Status</th><th>Test / API call</th><th style="width:150px">OLD → NEW</th></tr></thead><tbody>${l.map(t=>{const st=STATUS[t.status];
+  return `<table><thead><tr><th class="idcol">ID</th><th style="width:120px">Status</th><th>Test / API call</th><th style="width:150px">OLD → NEW</th><th></th></tr></thead><tbody>${l.map(t=>{const st=STATUS[t.status];
    const hasKids=!!(t.children&&t.children.length);const open=OPEN_TESTS.has(t.id);
    const tw=hasKids?`<span class="tw" onclick="toggleTest('${t.id}',event)">${open?'▼':'▶'}</span>`:'';
-   let r=`<tr class="click parent" onclick="openM('${t.id}')"><td class="idcol mono">${tw}${esc(t.id)}</td><td class="${st.cls}">${lbl(st)}</td><td>${esc(t.name)}<div class="hint">${esc(t.linear)}</div></td><td class="meta">${hasKids?t.children.length+' call'+(t.children.length>1?'s':''):'—'}</td></tr>`;
+   let r=`<tr class="click parent" onclick="openM('${t.id}')"><td class="idcol mono">${tw}${esc(t.id)}</td><td class="${st.cls}">${lbl(st)}</td><td>${esc(t.name)}<div class="hint">${esc(t.linear)}</div></td><td class="meta">${hasKids?t.children.length+' call'+(t.children.length>1?'s':''):'—'}</td><td class="act">${copyBtnHtml(t.id)}</td></tr>`;
    if(hasKids&&open){for(const ch of t.children){const s2=STATUS[ch.status];
-    r+=`<tr class="click child" onclick="openM('${ch.id}')"><td class="idcol mono">${esc(ch.id)}</td><td class="${s2.cls}">${lbl(s2)}</td><td class="tname"><span class="mono">${esc(ch.method)} ${esc(ch.path)}</span><div class="hint">${esc(ch.name)}</div></td><td class="meta">${ch.old.status} → ${ch.new.status}</td></tr>`}}
+    r+=`<tr class="click child" onclick="openM('${ch.id}')"><td class="idcol mono">${esc(ch.id)}</td><td class="${s2.cls}">${lbl(s2)}</td><td class="tname"><span class="mono">${esc(ch.method)} ${esc(ch.path)}</span><div class="hint">${esc(ch.name)}</div></td><td class="meta">${ch.old.status} → ${ch.new.status}</td><td class="act">${copyBtnHtml(ch.id)}</td></tr>`}}
    return r}).join('')}</tbody></table>`}
  function sec(id,title,body){const open=OPEN_SECS.has(id);return `<div class="sec${open?'':' collapsed'}" id="sec-${id}"><h2 onclick="toggleSec('${id}',event)"><span class="chev">▼</span>${title}</h2><div class="sec-body">${body}</div></div>`}
  const empty=['stripe','hours','pay','invoice','reg'].map((id,i)=>sec(id,['§3 Stripe','§4 Hours','§5 Worker pay','§6 Invoices / PDFs','§7 Regression'][i],rows(id))).join('');
