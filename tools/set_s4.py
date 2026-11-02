@@ -13,7 +13,9 @@ def set_parent(pid,status,verdict,time,children,note=''):
     cur.update(status=status,verdict=verdict,time=time,children=children)
     if note: cur['note']=note
     js=json.dumps(cur,ensure_ascii=False).replace('</','<\\/')
-    assert 'eyJ' not in js
+    js=re.sub(r'(X-Amz-(?:Credential|Signature|Security-Token)=)[^&"\\\s]+',r'\1<REDACTED>',js)
+    js=re.sub(r'AKIA[A-Z0-9]{16}','<REDACTED_AKID>',js)
+    assert 'eyJ' not in js and not re.search(r'AKIA[A-Z0-9]{16}',js)
     h=h[:m.start()]+'TESTS.push('+js+');'+h[m.end():]
     open(P,'w').write(h)
 if __name__=='__main__':
