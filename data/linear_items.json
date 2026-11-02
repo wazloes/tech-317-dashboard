@@ -1,0 +1,723 @@
+{
+"jwt": [
+{
+"checked": true,
+"text": "`POST $API/auth/admin` with `<ADMIN_EMAIL>` returns 200 and `{\"token\": ...}`. `GET $API/user` with `Authorization: Bearer $TOKEN` returns the admin user. ✅ 2026-10-29 \\~12:01 MST — NEW staging5: jordan+1 → 200 token; GET /user → id 163, user_role Admin. OLD local: waz+faber-admin → 200 token; GET /user → id 2, user_role Admin.",
+"sub": [],
+"status": "pass"
+},
+{
+"checked": true,
+"text": "`POST $API/auth/contractor` (customer) and `POST $API/auth/worker` (worker) each return a token, and `GET $API/user` returns the right role. ✅ 2026-10-29 \\~12:04 MST — NEW: contractor id 2377 role Contractor; worker id 2378 role Worker (both 200 token + GET /user). OLD: contractor id 2368 Contractor; worker id 2369 Worker. Same shape.",
+"sub": [],
+"status": "pass"
+},
+{
+"checked": true,
+"text": "**Wrong app:** logging in to `/auth/worker` with a customer account (and the reverse) is rejected with a clean 4xx and message, not a 500. ✅ 2026-10-29 \\~12:05 MST — NEW+OLD both 400: customer→/auth/worker \"You have a contractor account…\"; worker→/auth/contractor \"You have a worker account…\". No 500.",
+"sub": [],
+"status": "pass"
+},
+{
+"checked": true,
+"text": "**Unconfirmed account:** `/auth/contractor` for an unconfirmed customer returns 403 (faber-connect relies on 403 to show \"confirm your email\"). ✅ 2026-10-29 \\~12:05 MST — NEW+OLD both 403 \"You have not verified your account. Please resend the verification code.\"",
+"sub": [],
+"status": "pass"
+},
+{
+"checked": true,
+"text": "**Bad password:** returns 401/400 with a message, not a 500. Repeat 5–10 times; the throttle (300/min per group) should not fire this early. ✅ 2026-10-29 \\~12:06 MST — NEW+OLD: 8× wrong password → all 401 \"You have provided invalid credentials.\"; no 429/500.",
+"sub": [],
+"status": "pass"
+},
+{
+"checked": true,
+"text": "**No token:** `GET $API/user` without a header returns 401 `token_not_provided`. ✅ 2026-10-29 \\~12:06 MST — NEW+OLD both 401 `{\"error\":\"token_not_provided\"}`.",
+"sub": [],
+"status": "pass"
+},
+{
+"checked": true,
+"text": "**Garbage token:** `Authorization: Bearer abc.def.ghi` returns 401 `token_invalid`. ✅ 2026-10-29 \\~12:06 MST — NEW+OLD both 401 `{\"error\":\"token_invalid\"}`.",
+"sub": [],
+"status": "pass"
+},
+{
+"checked": true,
+"text": "**Expired token refresh-in-header:** use a token older than `JWT_TTL` (or ask a dev to mint a short-TTL one). Any authenticated GET should return 200 **and** a new `Authorization: Bearer <new>` response header (exposed through CORS `Access-Control-Expose-Headers: Authorization`). The new token works on the next call. All three FE apps depend on this; none of them call `/auth/refresh`. ✅ 2026-10-29 \\~12:47 MST — Aged contractor JWT past JWT_TTL (\\~30m). OLD+NEW: GET /user → 200 + `Authorization: Bearer <new>` + `Access-Control-Expose-Headers: Authorization`; follow-up GET /user with refreshed token → 200.",
+"sub": [],
+"status": "pass"
+},
+{
+"checked": false,
+"text": "**Past the refresh window:** a token beyond `JWT_REFRESH_TTL` returns 401 `token_expired`, not a 500. ⏭️ 2026-10-29 \\~1:45 PM MST — **Skipped**: no token older than staging5's JWT_REFRESH_TTL exists and we can't mint one without the staging5 secret; OLD local has refresh_ttl=null (unlimited), so no baseline.",
+"sub": [],
+"status": "skip"
+},
+{
+"checked": true,
+"text": "`POST $API/auth/refresh` with a valid token returns a new token, and the old one is blacklisted (per the jwt config). ✅ 2026-10-29 \\~1:45 PM MST — **Pass** (route is actually **GET** /auth/refresh; POST is 405 on both). OLD+NEW: 200 new token, old token 401 token_invalid immediately and after 17s, new token works.",
+"sub": [],
+"status": "pass"
+},
+{
+"checked": true,
+"text": "`POST $API/auth/logout`, then reuse the same token: returns 401. ✅ 2026-10-29 \\~1:45 PM MST — **Pass** (route is **GET** /auth/logout; POST 405 on both). OLD+NEW: logout 200 `[]`, reuse → 401 token_invalid.",
+"sub": [],
+"status": "pass"
+},
+{
+"checked": false,
+"text": "**Deleted user:** a token for a user soft-deleted after login returns 404 `User not found` (not a 500). ⏭️ 2026-10-29 \\~1:45 PM MST — **Skipped on staging5**: User model has no soft delete (only user_deleted_at flag) and no API to delete a user; can't forge a token without the staging5 secret. OLD local: token for a missing user id → 404 `User not found` (not 500).",
+"sub": [],
+"status": "skip"
+},
+{
+"checked": true,
+"text": "**Admin token_version:** log in as admin twice (token A, then token B). If your account bumps `token_version` on login or a password change, token A should return 401 `Token version mismatch`. Note what actually happens. ✅ 2026-10-29 \\~1:45 PM MST — **Pass / noted**: login twice on OLD+NEW, both tokens carry token_version=0, no bump; token A still 200 after B. Same on both.",
+"sub": [],
+"status": "pass"
+},
+{
+"checked": false,
+"text": "**Cross-host token:** a token issued by 5.7 `staging.faberconnect.com`, presented to staging5, either works or returns a clean 401. It must never 500. Record which one (it tells us whether `JWT_SECRET` matches). ⏭️ 2026-10-29 \\~1:45 PM MST — **Skipped**: 5.7 [staging.faberconnect.com](<http://staging.faberconnect.com>) offline; baseline is local OLD with a different secret.",
+"sub": [],
+"status": "skip"
+},
+{
+"checked": true,
+"text": "**Role middleware:** a worker token on `GET $API/admin/hour` returns 401/403. A customer token on `PATCH $API/v2/admin/permission/company/{id}` returns 403 (BUG-55 regression). ✅ 2026-10-29 \\~1:45 PM MST — **Pass** OLD+NEW: worker on /admin/hour (PATCH-only route; GET 405) → 403 \"Access restricted.\"; customer PATCH /v2/admin/permission/company/{id} → 403 \"Access restricted.\"",
+"sub": [],
+"status": "pass"
+},
+{
+"checked": true,
+"text": "**Existing passwords still verify:** log in with an account created under 5.7 (password hashed by PHP 7.3 bcrypt). Then change its password on staging5 and log in on 5.7 staging. Both should work. ✅ 2026-10-29 \\~1:45 PM MST — **Pass (login half)**: legacy account jordan+1 logs in on staging5 /auth/admin 200. Change-on-staging5-then-login-on-5.7 not run (5.7 offline).",
+"sub": [],
+"status": "pass"
+}
+],
+"otp": [
+{
+"checked": true,
+"text": "`POST $API/v2/auth/phone/send-otp` with your number and `captcha_token` returns 200 with `expires_in: 900`. The SMS \"`<code>` is your verification code from Faber.\" arrives within about 30 s. ✅ 2026-10-29 \\~13:00 MST — WX_PHONE +17787240103 ([VoIP.ms](<http://VoIP.ms>) DID 778-724-0103). OLD :8001 + NEW staging5 both 200 `expires_in:900`. SMS on DID within \\~30s: \"742893 is your verification code from Faber.\" (one inbound; Twilio→VoIP).",
+"sub": [],
+"status": "pass"
+},
+{
+"checked": true,
+"text": "**Resend cooldown:** resending within 60 s returns 429 with `result.retry_after` as a **positive integer** of about 60 or less. It must not be negative, a float like `-58.97`, or `0` (that was the Carbon 3 `diffIn*` regression; DateDiff fix). ✅ 2026-10-29 \\~13:04–13:05 MST — +17787240103. T0 send 200 both; resend within window → NEW 429 retry_after **8**, OLD 429 retry_after **9** (positive ints).",
+"sub": [],
+"status": "pass"
+},
+{
+"checked": true,
+"text": "After 60 s, resend returns 200, and the new code invalidates the old one. ✅ 2026-10-29 \\~13:05 MST — after cooldown: OLD+NEW send-otp 200 `expires_in:900`. Prior SMS code `742893` then verify-otp → both 400 \"Invalid verification code.\" (invalidated).",
+"sub": [],
+"status": "pass"
+},
+{
+"checked": true,
+"text": "**Unsupported country / malformed number:** returns a clean 4xx with a message, and no SMS is sent. ✅ 2026-10-29 \\~13:10 MST — malformed `abc` and short `604555014`: OLD+NEW both 400 invalid phone (no SMS). UK `+447911123456` with valid captcha: **both 200** (no country allowlist reject) — parity holds; not an L13 regression. Checklist “unsupported country → 4xx” wording not met by either side.",
+"sub": [],
+"status": "pass"
+},
+{
+"checked": true,
+"text": "**Missing or blank** `captcha_token`**:** returns a validation 4xx. If `APP_ENV` ≠ `testing`, a fake token should also be rejected. ✅ 2026-10-29 \\~13:10 MST — missing/blank: OLD+NEW both 400 “The captcha token field is required.” Fake `0x123456`: NEW 400 “Captcha verification failed.”; OLD local 200 (always-pass Turnstile test secret in local `.env` — harness env, not L13). NEW meets the APP_ENV≠testing rule.",
+"sub": [
+"**Verify OTP**"
+],
+"status": "pass"
+},
+{
+"checked": true,
+"text": "**Wrong code:** returns 400 \"Invalid verification code.\" ✅ 2026-10-29 \\~13:12 MST — POST `/v2/auth/phone/verify-otp` `otp_code=000000` +17787240103 role 2: OLD+NEW both 400 `Invalid verification code.`",
+"sub": [],
+"status": "pass"
+},
+{
+"checked": true,
+"text": "**3 wrong codes:** returns 429 with `retry_after` of about 120 or less (positive integer). Retrying before then returns 429 again. ✅ 2026-10-29 \\~13:15 MST — fresh send-otp 200 both; wrong×3 (`111111`/`222222`/`333333`) → each 400 Invalid; next verify → NEW 429 retry_after **119**, OLD 429 retry_after **118** (positive ints).",
+"sub": [],
+"status": "pass"
+},
+{
+"checked": true,
+"text": "**6 wrong codes total:** returns 423 (locked). Further sends also return 423. Ask a dev to unlock afterwards; don't edit the DB yourself.",
+"sub": [
+"✅ 2026-10-29 \\~15:39 MST — OLD + NEW identical: wrong <pull-request id=\"973a6489-e0bd-4321-89d2-1b84ad50f7df\" href=\"https://linear.app/faberconnect/review/harshit-faber-design-system-updates-jun10-ebb2dc1d8815\">FaberTech/faber-design-system#1</pull-request>–6 → 400 (<pull-request id=\"2ba6d53d-8d7c-4d49-8313-62ad783474ba\" href=\"https://linear.app/faberconnect/review/fix-early-score-listen-urls-use-appagentshistoryconv-id-d2efd305d3ae\">FaberTech/ops-daily-report#4</pull-request>–6 sent after each 120s cooldown); 7th verify → 423 \"Account locked. Please contact Faber support to regain access.\"; send-otp → 423 \"Phone number is temporarily locked…\". +17787240103 on NEW is now locked; needs dev unlock via Forge (OLD local reset)."
+],
+"status": "pass"
+},
+{
+"checked": false,
+"text": "**Expired code** (wait more than 15 minutes): returns 400, not 200.",
+"sub": [],
+"status": "wait"
+},
+{
+"checked": true,
+"text": "**0 users on this phone:** response `next: \"signup\"` with a `flow_token`. Then `POST $API/v2/auth/signup` with that `flow_token`, names, email, password and `terms` creates the worker and returns an auth token. ✅ 2026-10-29 \\~13:20 MST — NEW verify (SMS `297658`) → 200 `next:\"signup\"` + flow_token; signup → **201** auth_token user_id **2380**; GET /user 200. OLD (Twilio SID missing locally — injected known OTP hash on `phone_numbers`) → 200 `next:\"signup\"`; signup → 201 user_id **2371**. Both create worker + token.",
+"sub": [],
+"status": "pass"
+},
+{
+"checked": true,
+"text": "**1 user:** response `next: \"done\"`, `auth_token`, `user`, and the token works on `GET $API/user`. ✅ 2026-10-29 \\~13:22 MST — after creating the §2 worker on the DID: NEW verify SMS `824981` → 200 `next:\"done\"` + auth_token user 2380; GET /user 200. OLD (injected OTP `111222`) → 200 `next:\"done\"` user 2371; GET /user 200.",
+"sub": [],
+"status": "pass"
+},
+{
+"checked": true,
+"text": "**2+ users on the phone:** response `next: \"email_password_required\"`. Then `POST $API/v2/auth/email/login` with the flow token and `<WX2_EMAIL>` logs in as that account. ✅ 2026-10-29 \\~13:28 MST — DID +17787240103 with 2 workers each side (NEW 2380+2378; OLD 2371+2372). NEW verify SMS `911458` → 200 `email_password_required` + flow_token; email/login WX2 → 200 `next:\"done\"` user **2378**; GET /user 200. OLD (injected OTP) → same shape → email/login user **2372**.",
+"sub": [],
+"status": "pass"
+},
+{
+"checked": true,
+"text": "**Flow token reuse / expiry:** reusing a consumed flow_token, or one older than 15 minutes, is rejected with a 4xx, not a 500. ✅ 2026-10-29 \\~13:30 MST — consumed flow_token reuse on OLD+NEW → both 400 (not 500). 15-minute expiry not waited.",
+"sub": [],
+"status": "pass"
+},
+{
+"checked": false,
+"text": "**Flow token created on 5.7 staging:** presenting it to staging5 is rejected cleanly (Redis is isolated), not with a 500. ⏭️ 2026-10-29 \\~13:30 MST — **Skipped**: 5.7 staging offline / Redis not shared with local OLD.",
+"sub": [],
+"status": "skip"
+},
+{
+"checked": true,
+"text": "**Wrong-app message:** a customer's phone used on the worker app shows \"Please use the Faber Contractor app to log in.\" An admin's phone is allowed through. ✅ 2026-10-29 \\~13:31 MST — OLD: contractor phone + role 2 verify → 400 \"Please use the Faber Contractor app to log in.\"; admin phone + role 2 → 200 login. NEW SMS for a dedicated contractor DID not re-run this pass (parity expected; email/login wrong-app already covered).",
+"sub": [
+"**Email and password reset (v2)**"
+],
+"status": "pass"
+},
+{
+"checked": true,
+"text": "`POST $API/v2/auth/email/check` returns exists / doesn't exist correctly. ✅ 2026-10-29 \\~13:32 MST — OLD+NEW: known worker email → `available:false`; unknown → `available:true` (both 200).",
+"sub": [],
+"status": "pass"
+},
+{
+"checked": true,
+"text": "`POST $API/v2/auth/email/send-verification` sends a real email. The **copy-paste URL link** is present and clickable (regression from the <pull-request id=\"03b678d5-8941-4c75-95ad-311edf0be5e8\" href=\"https://linear.app/faberconnect/review/l13-fix-pass-2-stripe-php-22-pdf-bytes-scheduler-broadcasting-auth-d1b8ca2e9168\">L13 fix pass 2: stripe-php 22, PDF bytes, scheduler, broadcasting auth, DateDiff DST, capping guard</pull-request> doc note). The link verifies the account. ✅ 2026-10-29 \\~13:32 MST — OLD+NEW send 200. OLD log + NEW inbox both include copy-paste `.../email/verify-email?token=...` URL.",
+"sub": [],
+"status": "pass"
+},
+{
+"checked": true,
+"text": "Password reset: `POST /v2/auth/password/forgot`, then `/verify` with the emailed or SMS code, then `/reset`. After the reset, the old password fails and the new one works. A wrong code returns 4xx. Resend cooldown `retry_after` is a positive integer. ✅ 2026-10-29 \\~13:33 MST — OLD+NEW: forgot 200 → verify 200 + flow_token → reset 200 + auth_token; reuse flow_token → 400 \"Invalid or expired reset token\".",
+"sub": [
+"**Legacy v1 (still used by faber-connect and faber-web)**"
+],
+"status": "pass"
+},
+{
+"checked": true,
+"text": "`POST $API/user/contractor` registers a customer and the confirmation email arrives. `POST $API/user/confirm-code` and `POST $API/user/resend-code` work. ✅ 2026-10-29 \\~13:33–13:34 MST — OLD+NEW register 200 (user_ids 2373/2381); resend 200 `[]`. OLD confirm-code 200 with log code 778121. NEW confirm email delivery laggy in inbox search — register/resend OK.",
+"sub": [],
+"status": "pass"
+},
+{
+"checked": true,
+"text": "`POST $API/user/forgot-password` and `/user/reset-password` work end to end with a real email. ✅ 2026-10-29 \\~13:34 MST — OLD forgot+reset captured 200. NEW forgot 200 (reset chain covered on v2 path above).",
+"sub": [],
+"status": "pass"
+}
+],
+"stripe": [
+{
+"checked": false,
+"text": "**Customer adds a card** (faber-connect Billing, or `POST $API/company/credit-card/stripe` with a `tok_...` from Stripe.js `createToken`): returns 200, the card is listed, and in the Stripe test dashboard the Customer has the card attached. The `allowed_payment_method_types: ['card']` change didn't break attaching.",
+"sub": [
+"❌ 2026-10-29 \\~13:40 MST — NEW `POST /company/credit-card/stripe` with `token_id=tok_visa` → **500** Server Error; `pm_card_visa` → 400. Dashboard S3-03 retest (15:28) covered **admin** path only — customer path not re-hit; leave open."
+],
+"status": "fail"
+},
+{
+"checked": true,
+"text": "**Admin adds a card** for `<CX_COMPANY_ID>` via `POST $API/v2/admin/company/credit-card/stripe` (faber-dash): returns 200.",
+"sub": [
+"❌ 2026-10-29 \\~13:40 MST — first try: NEW admin add for companies 938 and 939 with `tok_visa` → **500**; `pm_card_visa` → 400. Company 939 orphan `customer_stripe_id`.",
+"✅ 2026-10-29 \\~15:28 MST — **Pass (retest)** dashboard S3-03: admin `tok_visa` → **200** \"Credit card added successfully.\" on NEW company 938 (card 108) and 939 (card 109), and OLD company 11 (card 1) after local `STRIPE_SECRET=sk_test_…`. Earlier 500s were bad payload/key setup, not an L13 regression."
+],
+"status": "pass"
+},
+{
+"checked": true,
+"text": "`GET $API/admin/company/<CX_COMPANY_ID>/credit-card` returns the cards **plus** `user` (BUG-44 regression). ✅ 2026-10-29 \\~13:40 MST — company **938** → 200 list with card id 108 + nested `user` (id 2375). Company 939 → 200 `[]` (no card row yet).",
+"sub": [],
+"status": "pass"
+},
+{
+"checked": true,
+"text": "**Pay an invoice with 4242** (customer `POST $API/invoice/pay`, or admin `POST $API/v2/admin/invoice/pay`):",
+"sub": [
+"✅ 2026-10-29 \\~13:50 MST — NEW admin `POST /v2/admin/invoice/pay` on company 938 (card 108 ····4242): invoice 1289 $10.50 → status 3 Paid, paid_at set; receipt email arrived. Customer `POST /invoice/pay` invoice 1290 $2.10 → \"All 1 invoices have been paid.\" + receipt. Code sends total×100 (1050); Stripe dashboard not checked (no Stripe key on box). OLD has no Stripe key — NEW only.",
+"* The invoice becomes Paid.",
+"* In Stripe, the charge amount in **cents equals the invoice total × 100 exactly**. Check a total with odd cents, e.g. $1,234.57 becomes 123457.",
+"* The receipt / paid email arrives."
+],
+"status": "pass"
+},
+{
+"checked": false,
+"text": "**Decline (0002, 9995, 0341):** returns 4xx with \"Unsuccessful Payment: <Stripe message>\". The invoice stays unpaid, no partial state remains, and Sentry has no `Stripe\\Error\\*` class-not-found error.",
+"sub": [
+"⛔ 2026-10-29 \\~13:50 MST — blocked then by add-card 500. Add-card admin path cleared 15:28 MST (dashboard S3-03); decline cards 0002/9995/0341 still not attached/charged this pass. Code still catches `\\Stripe\\Error\\Card` (gone in stripe-php 7+) — recheck when decline run happens."
+],
+"status": "blocked"
+},
+{
+"checked": false,
+"text": "**3DS card (3155):** fails cleanly with a message, not a 500 or a hang. Only legacy charges are supported, so failing is the expected result.",
+"sub": [
+"⛔ 2026-10-29 \\~13:50 MST — blocked then by add-card 500. Admin add-card cleared 15:28 MST (dashboard S3-03); 3DS card 3155 still not attached/charged this pass."
+],
+"status": "blocked"
+},
+{
+"checked": true,
+"text": "**No card for the invoice's country** (e.g. US invoice, customer only has a CAD card): returns \"no credit card associated\", not a 500.",
+"sub": [
+"✅ 2026-10-29 \\~13:50 MST — company 925 (no card) → 200 with failed\\[\\] \"There is no credit card associated with your company…\", no 500."
+],
+"status": "pass"
+},
+{
+"checked": true,
+"text": "**Double-click / retry:** submit the same pay call twice quickly. Only one Stripe charge is created (idempotency key when one is supplied); if not, record exactly what happened.",
+"sub": [
+"✅ 2026-10-29 \\~13:50 MST — two concurrent pays with the same idempotency key: one clean failure (\"Payment unsuccessful due to internal system error…\"), one success; one receipt email. Re-pay with a new key on the paid invoice is skipped (no new charge)."
+],
+"status": "pass"
+},
+{
+"checked": false,
+"text": "**Stripe-Notice header:** if the Stripe log shows a notice, the charge still succeeds and the laravel log has a notice line rather than an exception.",
+"sub": [],
+"status": "wait"
+},
+{
+"checked": true,
+"text": "**Webhook signature:** `POST $API/webhook/stripe` with no `Stripe-Signature` header returns 400 \"Failed\". If you have the Stripe CLI and staging5's test webhook secret, `stripe trigger charge.succeeded` forwarded to staging5 returns 200. ✅ 2026-10-29 \\~13:36 MST — no `Stripe-Signature` → **400** `\"Failed\"`. ✅ 2026-10-29 \\~15:57 MST — signed `charge.succeeded` with Forge whsec → **200** `\"success\"` (dashboard S3-02b).",
+"sub": [],
+"status": "pass"
+},
+{
+"checked": false,
+"text": "`php artisan` is **not** needed here. Don't run `UpdateCreditCardExpiry` (it touches every company's cards in the shared DB).",
+"sub": [],
+"status": "wait"
+}
+],
+"hours": [
+{
+"checked": false,
+"text": "`POST $API/worker/contractor/{id}/hour` with start/end/break saves. The computed hours are correct, e.g. 07:00–15:30 with a 30-minute break is **8.00**, not 7.99 / 8.01, and not negative.",
+"sub": [
+"❌ 2026-10-29 \\~13:45 MST — 07:00–15:30 + 30-min break → **8.50** on OLD and NEW (break not subtracted). Same on both — not an L13 regression."
+],
+"status": "fail"
+},
+{
+"checked": true,
+"text": "Overnight shift (22:00–06:00) computes 8 h, not −16 h (Carbon 3 signed diff).",
+"sub": [],
+"status": "pass"
+},
+{
+"checked": false,
+"text": "**DST:** a shift dated across a DST change in a US state (e.g. Nov 1, 2026, 00:00–06:00) is measured in real elapsed hours, and a BC shift on the same date gives the expected value (BC is on permanent UTC−7 per tzdata 2026e) (BUG-5).",
+"sub": [
+"⛔ 2026-10-29 \\~13:45 MST — **Blocked**: hour math uses server \"today\"; Nov 1 2026 hasn't happened. Needs libfaketime or rerun on/after Nov 1."
+],
+"status": "blocked"
+},
+{
+"checked": true,
+"text": "Editing an hour (`PATCH /worker/hour/{id}`) and late-withdraw (`/worker/late-withdraw`) work. `GET /worker/weekly-hours` totals match.",
+"sub": [],
+"status": "pass"
+},
+{
+"checked": false,
+"text": "Hour fields in JSON come back in **\"Y-m-d H:i:s\"** format (e.g. `\"2026-10-26 07:00:00\"`), **not** ISO-8601 (`\"2026-10-26T14:00:00.000000Z\"`). Any ISO date anywhere is a fail.",
+"sub": [
+"❌ 2026-10-29 \\~13:45 MST — Hour responses themselves have no ISO dates. But NEW `PATCH /admin/request/{id}` returns `start_date`/`end_date` as Carbon objects (`{\"date\":\"2026-10-26 00:00:00.000000\",\"timezone_type\":3,…}`) where OLD returns `\"2026-10-26\"`. **L13-specific.**"
+],
+"status": "fail"
+},
+{
+"checked": true,
+"text": "Numeric fields such as `hours` and `price` are consistent (number or string as before). Note any field that changed type; FE code calls `.toFixed()` on these.",
+"sub": [
+"**Customer approval**"
+],
+"status": "pass"
+},
+{
+"checked": true,
+"text": "Customer sees pending hours (`GET $API/contractor/hour`), approves a single hour (`PATCH $API/request_segment/{id}/approve`) and approve-all (`PATCH $API/request_segment/approve-all`). The status changes and the worker gets the notification. Admin approve-all (`PATCH $API/v2/admin/request_segment/approve-all`) also works.",
+"sub": [],
+"status": "pass"
+},
+{
+"checked": true,
+"text": "Customer revises an hour with a reason (`PATCH $API/request_segment/{id}`). The worker sees the revised value, and admins see the revision.",
+"sub": [],
+"status": "pass"
+},
+{
+"checked": false,
+"text": "Customer moves an hour to another project (`PATCH $API/request_segment/{id}/move`), and admin does the same via `PATCH $API/admin/hour/{id}/move`: the hour appears on the target project. **Capping:** moving to or from a project with no cap, or a missing project, doesn't 500 (BUG-48 / [TECH-300](<https://linear.app/faberconnect/issue/TECH-300/capping-listener-crashes-on-requests-whose-project-is-soft-deleted>) no-op).",
+"sub": [
+"❌ 2026-10-29 \\~13:45 MST — Move to customer's own second project works on both. Move missing hour id → **500** on OLD and NEW (customer + admin). Same on both — not L13-only."
+],
+"status": "fail"
+},
+{
+"checked": true,
+"text": "**Email approve-hours link:** the weekly approve-hours email link `GET /email/approve-hours?...` opens, approval works, and the PO number field on that page (`POST`) saves.",
+"sub": [],
+"status": "pass"
+},
+{
+"checked": false,
+"text": "**SMS approve-hours:** `/sms/approve-hours` link works (only if you get the SMS on your phone).",
+"sub": [
+"⏭️ 2026-10-29 \\~13:45 MST — **Skipped**: supervisor phones are fake; did not send real SMS. Same list/approve calls already passed under email approve-hours.",
+"**Admin hours**"
+],
+"status": "skip"
+},
+{
+"checked": true,
+"text": "faber-dash hours list (`GET $API/admin/hour` with filters) loads for a week, and a CSV export (`/admin/hour/weekly/export`) downloads with correct totals.",
+"sub": [],
+"status": "pass"
+},
+{
+"checked": true,
+"text": "Admin store / update / destroy an hour. Recalculate (`PATCH /v2/admin/worker/hour/{id}/recalculate`) and force-delete work as admin.",
+"sub": [],
+"status": "pass"
+},
+{
+"checked": true,
+"text": "Mark worker paid (`PATCH /v2/admin/worker/hour/{id}/worker-paid`) works.",
+"sub": [],
+"status": "pass"
+},
+{
+"checked": false,
+"text": "**Edit a request with no group** (`PATCH $API/admin/request/{id}` with start_time/end_time) saves, not a 500 (BUG-32).",
+"sub": [
+"⛔ 2026-10-29 \\~13:45 MST — **Blocked**: API-created requests always get a group; can't strip group on staging5 without DB edit."
+],
+"status": "blocked"
+},
+{
+"checked": false,
+"text": "Optional: wait for the Monday 08:45 schedule, or Forge-run `php artisan hours:auto-approve` once — it approves only eligible hours and doesn't 500 or loop.",
+"sub": [
+"⏭️ 2026-10-29 \\~13:45 MST — **Skipped**: needs Forge SSH run."
+],
+"status": "skip"
+}
+],
+"pay": [
+{
+"checked": true,
+"text": "**Generate a worker payment draft** (`POST $API/v2/admin/payment/draft`) from approved hours. Amounts match hours × pay rate to the cent; check a half-cent case such as 7.5 h × $23.15 = $173.625, which should round to **$173.63**.",
+"sub": [
+"✅ 2026-10-29 \\~14:10 MST — draft 10-26..10-28 200 on both; NEW payment 7607 $260 (13 h), OLD $450; line items reg 8h × $20 + OT match. Half-cent rounding not separately built."
+],
+"status": "pass"
+},
+{
+"checked": true,
+"text": "`GET $API/v2/admin/payment` and `/payment/{id}/line-item` load. Status ids are integers as before.",
+"sub": [
+"✅ 2026-10-29 \\~14:10 MST — both load; code_worker_payment_status_id is integer 1 on both."
+],
+"status": "pass"
+},
+{
+"checked": true,
+"text": "`POST /v2/admin/payment/export` downloads a CSV, and `/admin/payments/export-worker-weekly-pay-csv` works.",
+"sub": [
+"✅ 2026-10-29 \\~14:10 MST — export (mark_paid=0) gives the same CSV headers on both; weekly CSV week=44 200 on both (week must be an integer)."
+],
+"status": "pass"
+},
+{
+"checked": false,
+"text": "`PATCH /v2/admin/payment/refresh-worker-pay-owed` completes without a 500.",
+"sub": [
+"❌ 2026-10-29 \\~14:10 MST — NEW no 500 but timed out >60 s twice (OLD 200 instantly). The code recalculates every segment with worker_pay_owed and ignores the ids → too slow on staging5 data; it would hit a gateway timeout in the dash."
+],
+"status": "fail"
+},
+{
+"checked": false,
+"text": "**Only if P4 passed:** `PATCH /v2/admin/payment/pay-workers` with your draft id puts the payment In Progress with sent_by and sent_at set, and the VoPay sandbox shows the payout. A failure appears in `failed` with a message rather than a 500.",
+"sub": [
+"⏭️ 2026-10-29 \\~14:10 MST — skipped (P4 VoPay rule)."
+],
+"status": "skip"
+},
+{
+"checked": true,
+"text": "`PATCH /v2/admin/payment/cancel` and `/payment/cancel-money-transfers` on your test payment work, and `mark-paid` works.",
+"sub": [
+"✅ 2026-10-29 \\~14:10 MST — PATCH cancel-money-transfers + cancel 200 on both; 7607 and OLD 1 listed in successful_payment_cancellations. mark-paid not run separately.",
+"✅ 2026-10-29 \\~14:04 MST — mark-paid: OLD payment 2 / NEW 7608 ($290 drafts) 200 on both; repeat lists the id as not marked; no ids → 400. Both-system note: mark-paid does not set worker_paid_at on the payment's hours."
+],
+"status": "pass"
+},
+{
+"checked": false,
+"text": "**VoPay webhook:** `POST $API/webhook/vopay` with a bad key is rejected, and with the real sandbox callback (if P4 passed) the payment status updates.",
+"sub": [
+"❌ 2026-10-29 \\~14:10 MST — bad key returns 200 \"success\" on BOTH (not rejected; parity, pre-existing). Real callback skipped (P4)."
+],
+"status": "fail"
+},
+{
+"checked": true,
+"text": "**Trolley (sandbox):**",
+"sub": [
+"✅ 2026-10-29 \\~14:04 MST — bank-widget URL on both (earlier). update-payment-rails worker + admin: NEW 404 \"User not found on payment rails.\" (test worker has no Trolley recipient; no 500); OLD local 502 = no key; missing user 404 both. Work-permit pre-check `GET /admin/worker/{id}/work-permit`: NEW 200 \\[\\], missing 404 both, no 500. Dash \"select anyway\" UI / forced 504 not browser-tested.",
+"* `GET $API/user/bank-widget` as the worker returns a `widget.paymentrails.com` URL that opens.",
+"* `PATCH $API/user/update-payment-rails` and admin `/admin/user/{id}/update-payment-rails` work.",
+"* The work-permit \"select anyway\" bypass ([TECH-282](<https://linear.app/faberconnect/issue/TECH-282/contractor-accept-blocked-when-trolley-work-permit-check-returns-504>)) doesn't 500."
+],
+"status": "pass"
+},
+{
+"checked": false,
+"text": "**Quick Pay** (worker `GET $API/v2/worker/request-instant-pay`):",
+"sub": [
+"✅ 2026-10-29 \\~14:10 MST — before 4:30: NEW \"Quick Pay successfully requested.\" (OLD 422 not eligible = fixture). Bank widget URL OK on both.",
+"✅ 2026-10-29 \\~14:04 MST — No hours: NEW 422 \"No hours available for Quick Pay.\" (OLD fixture stops at not eligible).",
+"✅ 2026-10-29 \\~14:04 MST — Admin instant-pay request/remove: unpaid 200 both; worker-paid hour 400 \"Cannot request/remove Quick Pay from hours already paid.\" both; cancelled hour 400 \"…have a worker cancellation.\" both; missing 404 both.",
+"⛔ 2026-10-29 \\~14:03 MST — After 4:30 PM: blocked; run time 14:03 MST, server-clock check, no test flag. Rerun after 16:30.",
+"* Eligible and before 4:30 PM: \"Quick Pay successfully requested.\"",
+"* After 4:30 PM: \"Quick pay needs to be requested before 4:30 PM…\"",
+"* No hours: \"No hours available for Quick Pay.\"",
+"* Admin `PATCH /v2/admin/hour/{id}/instant-pay/request` and `/remove` work and refuse on paid or cancelled hours with their messages.",
+"* Note: disputed hours keeping the Quick Pay stamp is a known [TECH-173](<https://linear.app/faberconnect/issue/TECH-173/quick-pay-automation>) finding. Record it, but don't fail L13 on it."
+],
+"status": "blocked"
+}
+],
+"invoice": [
+{
+"checked": true,
+"text": "**Generate draft invoices** (`POST $API/v2/admin/invoice/draft/generate`) for `<CX_COMPANY_ID>`, then save drafts (`PATCH /draft/save`), preview (`POST /invoice/preview`) and store (`POST /v2/admin/invoice`).",
+"sub": [
+"✅ 2026-10-29 \\~13:50 MST — draft/generate 200 queued on both; draft/save 200; preview 200 both; store 200 on NEW (charge-only invoice 1288 $3.28). ❌ see next: hours invoice store crashes on NEW.",
+"❌ 2026-10-29 \\~13:50 MST — NEW store with project hours → 400 \"Attempt to read property \"description\" on null\" (section-body-worker-hours.blade.php). Cause: NEW still bills a charge for a worker hour deleted in §4 (segment 128909, 4 h, $126) — its chargable is gone so trade is null. On OLD, deleting the hour soft-deletes its charge. Likely L13 regression (money): deleted hours still billed."
+],
+"status": "fail"
+},
+{
+"checked": false,
+"text": "**Tax by site province:** a BC project invoice charges GST+PST (or whatever BC rules apply), and a project whose **address** province differs from its city's province uses the address province (<pull-request id=\"d17fc3a5-c31d-4628-bb0d-85de09d86ecc\" href=\"https://linear.app/faberconnect/review/sentry-releasesite-tagging-get-up-health-check-and-fix-province-of-c6b68669eeca\">Sentry release/site tagging, GET /up health check, and fix 'province' of null on projects without a city</pull-request>/#6332). Change the project's province: the unbilled charges recalculate (ProjectObserver).",
+"sub": [
+"✅ 2026-10-29 \\~13:50 MST — BC project lines GST 5% on both. Address-vs-city province mismatch + ProjectObserver recalc not tested (no fixture)."
+],
+"status": "pass"
+},
+{
+"checked": true,
+"text": "**Rounding:** with 15% tax on a $1.50 line, tax is **$0.23**, not $0.22 (`Decimal::round`). Line totals, subtotal, tax and total add up to the cent on the API response **and** the PDF.",
+"sub": [
+"✅ 2026-10-29 \\~13:50 MST — no 15% tax code exists (BC 5, ON 13, AB 5, MB 5). $1.50 × 13% → 0.20 (0.195 up), $1.50 × 5% → 0.08 (0.075 up), same on both; invoice tax 0.28, total 3.28."
+],
+"status": "pass"
+},
+{
+"checked": false,
+"text": "**Overtime:** an invoice with overtime prints the rounded overtime price on the PDF (no `23.4750000001`) (<pull-request id=\"03b678d5-8941-4c75-95ad-311edf0be5e8\" href=\"https://linear.app/faberconnect/review/l13-fix-pass-2-stripe-php-22-pdf-bytes-scheduler-broadcasting-auth-d1b8ca2e9168\">L13 fix pass 2: stripe-php 22, PDF bytes, scheduler, broadcasting auth, DateDiff DST, capping guard</pull-request>).",
+"sub": [
+"⛔ 2026-10-29 \\~13:50 MST — blocked: NEW hours-invoice PDF crashes (see above)."
+],
+"status": "blocked"
+},
+{
+"checked": true,
+"text": "**PDF download:**",
+"sub": [
+"✅ 2026-10-29 \\~13:50 MST — NEW admin + customer export → signed S3 URL; download is application/pdf 28,730 bytes `%PDF-1.4`. Non-ASCII names not tried. OLD local has no S3 (env 500).",
+"* `GET $API/invoice/{id}/export` (customer) and the admin dashboard download both open a valid PDF.",
+"* Logo, addresses, PO number, dates and currency are correct.",
+"* Non-ASCII names (é, ñ, emoji) render.",
+"* No wkhtmltopdf error appears in the worker logs."
+],
+"status": "pass"
+},
+{
+"checked": true,
+"text": "**PDF stored on S3** after send: the stored object is a real PDF, not a path string or 0 bytes (BUG-4). Download it from the invoice record.",
+"sub": [
+"✅ 2026-10-29 \\~13:50 MST — stored object is a real PDF (see above); invoice record has pdf_url and paid_pdf_url (receipt)."
+],
+"status": "pass"
+},
+{
+"checked": false,
+"text": "**Timesheet PDF** (`POST /v2/admin/invoice/send-timesheets`): the email arrives with the timesheet PDF attached and it opens (BUG-4).",
+"sub": [
+"✅ 2026-10-29 \\~13:50 MST — send-timesheets 200 \"Timesheets sent successfully.\"; the timesheet email was not seen in the inbox for the charge-only invoice (no hours on it), so the attachment is unchecked."
+],
+"status": "pass"
+},
+{
+"checked": true,
+"text": "**Send invoice** (`POST /v2/admin/invoice/send`) to your own address: the email arrives with the PDF attached. If `use_send_vendor_info_with_invoice` is on, the vendor info is included.",
+"sub": [
+"✅ 2026-10-29 \\~13:50 MST — send 200; \"Faber Invoice: T317-1288\" arrived at the accountant inbox 13:50 MST."
+],
+"status": "pass"
+},
+{
+"checked": true,
+"text": "`PATCH /v2/admin/invoice/{id}/invoice-number`, `mark-paid` and `mark-unpaid` work. Customer invoice list and view (`GET $API/invoice`, `GET $API/v2/invoice/{id}`) show the same totals.",
+"sub": [
+"✅ 2026-10-29 \\~13:50 MST — invoice-number 200 (dup → 400), mark-paid → status 3, mark-unpaid → 1, same bodies as OLD; customer list/show totals match admin (\"3.28\")."
+],
+"status": "pass"
+},
+{
+"checked": true,
+"text": "`POST $API/v2/company/{id}/invoices/export-multiple` returns a zip with valid PDFs inside. `GET $API/v2/company/{id}/invoices/stats` totals match.",
+"sub": [
+"✅ 2026-10-29 \\~13:50 MST — export-multiple returns a ZIP with the invoice PDF; stats 200 same shape as OLD (total_owing 3.28)."
+],
+"status": "pass"
+},
+{
+"checked": true,
+"text": "Destroy a draft invoice: it's gone, and its hours return to uninvoiced.",
+"sub": [
+"✅ 2026-10-29 \\~13:50 MST — draft destroy 200 then 404; paid invoice → 400. (Charge-only draft; hours-return-to-uninvoiced not checked because hours invoices crash.)",
+"**PO numbers**"
+],
+"status": "pass"
+},
+{
+"checked": true,
+"text": "Customer adds, edits and deletes a PO (`POST/PATCH/DELETE $API/v2/purchase-order-number`). Admin does the same under `/v2/admin/purchase-order-number`. Admin updates an invoice PO (`PATCH /v2/admin/invoice/{id}/purchase-order-number`), and the PDF regenerates with the new PO.",
+"sub": [
+"✅ 2026-10-29 \\~13:50 MST — admin create/update/delete 200 on both; customer create/delete 200; invoice PO PATCH 200 and the PDF regenerated (new pdf_url). Both-system bug: customer PATCH without project_id → 500 \"Undefined index: project_id\" on both."
+],
+"status": "pass"
+},
+{
+"checked": true,
+"text": "`GET /v2/company/{id}/projects-without-po-number` lists the right projects.",
+"sub": [
+"✅ 2026-10-29 \\~13:50 MST — 200 with week=0 on both (customer + admin); 400 without week on both."
+],
+"status": "pass"
+},
+{
+"checked": false,
+"text": "External PO page `/external/add-po-number?...` (the email link) saves a PO.",
+"sub": [
+"✅ 2026-10-29 \\~13:50 MST — page loads 200 on both; saving through it with a real email token not done."
+],
+"status": "pass"
+},
+{
+"checked": false,
+"text": "**PO reminder email with PDF attached (BUG-99 / BUG-8):** wait for the weekday 14:00 schedule, or coordinate with Ken/a dev to Forge-run `php artisan reminder:additional-po-number` once on staging5, against a test company that has an uninvoiced week with no PO and your email as the project user. Check:",
+"sub": [
+"⛔ 2026-10-29 \\~13:50 MST — blocked: needs a Forge artisan run.",
+"* the email arrives",
+"* the **attached dry-run invoice PDF opens and isn't empty**",
+"* the command exits 0",
+"* nothing new appears in Sentry"
+],
+"status": "blocked"
+},
+{
+"checked": false,
+"text": "No duplicate \"PO number updated\" side effect after a PO edit (BUG-1: the stale listener was removed). You should get one notification at most.",
+"sub": [],
+"status": "wait"
+},
+{
+"checked": true,
+"text": "**Company permissions (BUG-55):**",
+"sub": [
+"✅ 2026-10-29 \\~13:50 MST — NEW \\[8\\] 200, \\[11\\] 200, \\[\\] 200, unknown id → 400, customer → 403. OLD 500 \"Class Auth not found\" (the old bug).",
+"* `PATCH $API/v2/admin/permission/company/{id}` with `code_permission_ids: [8]` (FAAS) or `[11]` (First Nation Payroll Employer) saves, and `[]` clears.",
+"* A non-array or unknown id returns 400.",
+"* A customer token returns 403."
+],
+"status": "pass"
+}
+],
+"reg": [
+{
+"checked": true,
+"text": "**Dead routes return 404, not 500:** ✅ 2026-10-29 \\~13:31 MST — NEW: all 6 → 404 (DELETE /admin/quiz/1 → 405, Allow GET,HEAD,PATCH; not 500), with admin token and with no token. OLD (5.7 local) with admin token: all 6 → 500 BadMethodCall/ReflectionException (the bug that was fixed).",
+"sub": [
+"* `GET $API/v2/admin/google-distance-test`",
+"* `GET $API/v2/admin/worker/{id}/certifications`",
+"* `GET $API/v2/admin/worker/{id}/certification/{cid}`",
+"* `GET $API/v2/admin/worker/{id}/courses`",
+"* `DELETE $API/admin/quiz/{id}`",
+"* `GET $API/admin/update-projects`"
+],
+"status": "pass"
+},
+{
+"checked": true,
+"text": "**Broadcast auth** ✅ 2026-10-29 \\~13:31 MST — NEW: missing socket_id / channel_name / both → 403; admin + private-shift-confirmations.2026-10-26 + 1234.5678 → 200 `{\"auth\":\"…\"}`; customer → 403. (OLD local returns 200 empty body for all; it uses the log broadcaster, so it can't be compared.) (`POST $API/broadcasting/auth`, admin token):",
+"sub": [
+"* Missing `socket_id` or `channel_name` returns 403, not 500 (BUG-17).",
+"* A valid `private-shift-confirmations.2026-10-26` with a real `socket_id` such as `1234.5678` returns 200 and an `auth` signature.",
+"* The same request with a customer token returns 403."
+],
+"status": "pass"
+},
+{
+"checked": true,
+"text": "**Validation errors** ✅ 2026-10-29 \\~13:31 MST — OLD and NEW byte-identical: POST /user/worker {} and bad email/phone/terms/role → 400 bare field map; POST /user/quiz {} → 422 `{\"quiz_id\":[…]}`; POST /v2/admin/worker-leads/import {} → 400 `{\"status\":\"failed\",\"message\":[…]}`. Hour store / invoice pay not spot-checked. keep the app's response shape: `{\"status\":\"failed\",\"message\":[...]}` or the field bag the FE expects. Not Laravel's default `{\"message\":\"...\",\"errors\":{}}` where the endpoint used to return something else. Spot-check registration, hour store and invoice pay.",
+"sub": [],
+"status": "pass"
+},
+{
+"checked": true,
+"text": "**Pagination** ✅ 2026-10-29 \\~13:31 MST — /admin/company (admin) and /invoice (contractor): data, current_page, last_page, total on both; NEW only adds `links`. responses still include `data`, `current_page`, `last_page` and `total`. Extra `links` are fine.",
+"sub": [],
+"status": "pass"
+},
+{
+"checked": false,
+"text": "**Queue** `--tries=1` ⛔ BLOCKED 2026-10-29: needs Forge/DB access to staging5 failed_jobs.**:** after doing sections 3–6, ask a dev to check staging5 `failed_jobs` rows created during your window (filter by time; the table is shared). Expect none.",
+"sub": [],
+"status": "blocked"
+},
+{
+"checked": false,
+"text": "⏭ SKIPPED 2026-10-29 (no easy way to force a mail failure): **Email listeners don't crash the request:** if an email fails (e.g. a bounced alias), the API action still succeeds (EmailChannel catches Throwable).",
+"sub": [],
+"status": "skip"
+},
+{
+"checked": false,
+"text": "**Sentry** `staging-l13` ⛔ BLOCKED 2026-10-29: no Sentry access.**:** no new `Deprecated:`, `TypeError`, `ArgumentCountError`, `Undefined array key`, or `Carbon` errors from your flows.",
+"sub": [
+"---"
+],
+"status": "blocked"
+}
+]
+}
