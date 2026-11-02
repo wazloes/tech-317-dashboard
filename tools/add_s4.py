@@ -11,11 +11,42 @@ def tc(pid,suf,lab,status,verdict,note=''):
     o=side('old',OLDB+e['path'],e['old']['status'],red2(e['old']['body']),None,True,'2026-10-29 13:4x MST')
     n=side('new',NEWB+e['path'],e['new']['status'],red2(e['new']['body']),None,True,'2026-10-29 13:4x MST')
     c=child(pid,suf,lab,e['method'],e['path'],o,n,status,verdict,note); c['diffs']=realdiff(c['diffs']); return c
+# label -> (method, path). Required so yc() can never emit placeholders.
+YPATH={
+  'log Mon 10-26 07:00-15:30 brk2':('POST','/worker/contractor/{cid}/hour'),
+  'edit wed 05:00-09:00 -> 06:00-10:00 w/ request_id':('PATCH','/worker/hour/{id}'),
+  'edit without request_id':('PATCH','/worker/hour/{id}'),
+  'worker late type 12 -> 400':('POST','/worker/late-withdraw'),
+  'admin late type 13 on today seg':('POST','/admin/worker/late-withdraw'),
+  'admin move missing segment':('PATCH','/admin/hour/{id}/move'),
+  'worker delete own (wed seg, dated 10-29)':('DELETE','/worker/hour/{id}'),
+  'admin PATCH request start_date+weekdays objs+total_break 3 (has group)':('PATCH','/admin/request/{id}'),
+  'admin PATCH request start_date (request HAS group)':('PATCH','/admin/request/{id}'),
+  'approve single mon':('PATCH','/request_segment/{id}/approve'),
+  'approve-all tue':('PATCH','/request_segment/approve-all'),
+  'approve-all incl foreign id 1 -> 400?':('PATCH','/request_segment/approve-all'),
+  'v2 approve-all adm + bogus, by name':('PATCH','/v2/admin/request_segment/approve-all'),
+  'revise tue 06:00-17:00 -> 07:00-16:00 brk2':('PATCH','/request_segment/{id}'),
+  'revise bad time 7am':('PATCH','/request_segment/{id}'),
+  'revise approved mon -> 400':('PATCH','/request_segment/{id}'),
+  'admin update revised fields':('PATCH','/admin/worker/hour/{id}'),
+  'update_multiple w/o hour_status':('PATCH','/admin/hour'),
+  'recalculate adm':('PATCH','/v2/admin/worker/hour/{id}/recalculate'),
+  'force-delete worker-paid seg':('DELETE','/v2/admin/worker/hour/{id}/force-delete'),
+  'admin destroy missing':('DELETE','/admin/worker/hour/{id}'),
+  'admin store over paid seg':('POST','/admin/worker/contractor/{cid}/hour'),
+  'worker-paid approved':('PATCH','/v2/admin/worker/hour/{id}/worker-paid'),
+  'worker-paid unapproved':('PATCH','/v2/admin/worker/hour/{id}/worker-paid'),
+  'worker-paid unknown -> 404':('PATCH','/v2/admin/worker/hour/{id}/worker-paid'),
+}
 def yc(pid,suf,case,lab,status,verdict,note=''):
     e=[x for x in RES[case] if x['label']==lab][0]
-    o=side('old',OLDB,e['o']['status'],red2(e['o']['body']),None,True,'2026-10-28 16:0x MST')
-    n=side('new',NEWB,e['n']['status'],red2(e['n']['body']),None,True,'2026-10-28 16:0x MST')
-    c=child(pid,suf,f'[{case} 10-28 run] {lab}','—','(see http.log)',o,n,status,verdict,note); c['diffs']=[]; return c
+    if lab not in YPATH:
+        raise SystemExit(f'yc: missing method/path for label {lab!r} (case {case}) — refuse see-http.log placeholders')
+    method,path=YPATH[lab]
+    o=side('old',OLDB+path,e['o']['status'],red2(e['o']['body']),None,True,'2026-10-28 16:0x MST')
+    n=side('new',NEWB+path,e['n']['status'],red2(e['n']['body']),None,True,'2026-10-28 16:0x MST')
+    c=child(pid,suf,f'[{case} 10-28 run] {lab}',method,path,o,n,status,verdict,note); c['diffs']=[]; return c
 L=lambda n:'abcdefghijklmnopqrstuvwxyz'[n]
 def kids(pid,specs): return [ (tc if s[0]=='t' else yc)(pid,L(i),*s[1:]) for i,s in enumerate(specs)]
 OUT=[]
