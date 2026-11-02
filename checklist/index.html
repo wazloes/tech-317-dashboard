@@ -44,9 +44,12 @@ tr.child td{background:#fcfcfb;font-size:15px}tr.child td.tname{padding-left:44p
 .okp{color:var(--grn);font-weight:700}.bang{display:inline-block;margin-left:6px;min-width:18px;text-align:center;font-weight:800;color:#854d0e;background:#facc15;border-radius:9px;padding:0 5px}
 .difftop{border-bottom:1px solid var(--line);margin:8px 0 14px;padding-bottom:6px}.difftop .sides{margin:8px 0}.dnotes{margin:4px 0 8px 18px;padding:0}.dnotes li{margin:3px 0}.t-type{color:#c2410c}.t-miss{color:#dc2626}.t-extra{color:#57534e}.typebox{border:2px solid #f59e0b;background:#fffbeb;border-radius:8px;padding:10px 14px;margin:10px 0 14px}.typebox strong{color:#b45309}.typebox ul{margin:6px 0 0 18px;padding:0}.typebox li{margin:2px 0}
 .dtoggle{margin-left:10px;padding:3px 10px;border-radius:6px;border:1px solid #a8a29e;background:#fff;cursor:pointer;font-size:12px}
-.copybtn{margin:0 10px 0 0;padding:6px 12px;border-radius:8px;border:1px solid #a8a29e;background:#fff;cursor:pointer;font-size:13px;font-weight:600}
+.copybtn{display:inline-flex;align-items:center;gap:6px;margin:0 10px 0 0;padding:6px 12px;border-radius:8px;border:1px solid #a8a29e;background:#fff;cursor:pointer;font-size:13px;font-weight:600}
 .copybtn:hover{background:var(--soft)}.copybtn.ok{border-color:#86efac;background:var(--grnbg);color:var(--grn)}
+.copybtn svg{width:14px;height:14px;flex:0 0 auto}
 .toolbar{display:flex;align-items:center;gap:8px;margin:0 0 8px;flex-wrap:wrap}
+.toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(20px);background:#1c1917;color:#fafaf9;padding:12px 18px;border-radius:10px;font-size:14px;font-weight:500;box-shadow:0 8px 24px rgba(0,0,0,.25);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:10000;max-width:min(92vw,420px);text-align:center}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 
 .sec{margin:18px 0 8px}.sec>h2{cursor:pointer;user-select:none;display:flex;align-items:center;gap:8px;margin:0}
 .sec>h2 .chev{display:inline-block;width:1em;color:var(--mute);font-weight:400;transition:transform .15s}
@@ -72,6 +75,7 @@ td.idcol .mono{font-weight:600}
 <div class="modal" id="modal" onclick="if(event.target===this)closeM()">
   <div class="box" id="mbox"></div>
 </div>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
 
 <script>
 const TESTS=[
@@ -373,9 +377,14 @@ function buildPrompt(id){
  }
  L.push('');L.push(`Source: https://wazloes.github.io/tech-317-qa-dashboard/checklist/#${id}`);
  return L.join('\n')}
+function showToast(msg){
+ const el=document.getElementById('toast');if(!el)return;
+ el.textContent=msg;el.classList.add('show');
+ clearTimeout(showToast._t);showToast._t=setTimeout(()=>el.classList.remove('show'),2800)}
 async function copyPrompt(id,btn){
  const text=buildPrompt(id);if(!text)return;
- const done=()=>{if(btn){const o=btn.textContent;btn.textContent='Copied';btn.classList.add('ok');setTimeout(()=>{btn.textContent=o;btn.classList.remove('ok')},1500)}};
+ const done=()=>{if(btn){btn.classList.add('ok');setTimeout(()=>btn.classList.remove('ok'),1500)}
+  showToast('Copied full test context to Clipboard for your AI')};
  try{await navigator.clipboard.writeText(text);done()}
  catch(e){const ta=document.createElement('textarea');ta.value=text;ta.style.position='fixed';ta.style.left='-9999px';document.body.appendChild(ta);ta.select();
   try{document.execCommand('copy');done()}catch(err){alert('Copy failed — select and copy manually.');console.error(err)}
@@ -392,7 +401,7 @@ function openM(id){const f=find(id);if(!f)return;const t=f.t;let h='';
   <div class="req"><div class="label">What we did</div><pre>${esc(t.sent)}</pre></div>
   <div class="sides"><div class="side"><h4>OLD</h4><pre>${esc(t.oldS)}</pre></div><div class="side"><h4>NEW</h4><pre>${esc(t.newS)}</pre></div></div>
   <p><strong>${esc(t.verdict)}</strong></p><p class="meta">Checked ${esc(t.time)}</p>`}
- document.getElementById('mbox').innerHTML=`<button class="close" onclick="closeM()">×</button><div class="toolbar"><button type="button" class="copybtn" id="copybtn" onclick="copyPrompt('${id}',this)">Copy prompt</button><span class="meta">Full test data — paste into any chat</span></div>`+h;
+ document.getElementById('mbox').innerHTML=`<button class="close" onclick="closeM()">×</button><div class="toolbar"><button type="button" class="copybtn" id="copybtn" onclick="copyPrompt('${id}',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg><span>Copy Context</span></button></div>`+h;
  document.getElementById('modal').classList.add('open');document.body.style.overflow='hidden';location.hash=id;window.scrollTo(0,0);document.getElementById('modal').scrollTop=0}
 function closeM(){document.getElementById('modal').classList.remove('open');document.body.style.overflow='';if(location.hash)history.replaceState(null,'',location.pathname)}
 const OPEN_TESTS=new Set();
