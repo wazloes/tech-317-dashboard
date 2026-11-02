@@ -44,6 +44,9 @@ tr.child td{background:#fcfcfb;font-size:15px}tr.child td.tname{padding-left:44p
 .okp{color:var(--grn);font-weight:700}.bang{display:inline-block;margin-left:6px;min-width:18px;text-align:center;font-weight:800;color:#854d0e;background:#facc15;border-radius:9px;padding:0 5px}
 .difftop{border-bottom:1px solid var(--line);margin:8px 0 14px;padding-bottom:6px}.difftop .sides{margin:8px 0}.dnotes{margin:4px 0 8px 18px;padding:0}.dnotes li{margin:3px 0}.t-type{color:#c2410c}.t-miss{color:#dc2626}.t-extra{color:#57534e}.typebox{border:2px solid #f59e0b;background:#fffbeb;border-radius:8px;padding:10px 14px;margin:10px 0 14px}.typebox strong{color:#b45309}.typebox ul{margin:6px 0 0 18px;padding:0}.typebox li{margin:2px 0}
 .dtoggle{margin-left:10px;padding:3px 10px;border-radius:6px;border:1px solid #a8a29e;background:#fff;cursor:pointer;font-size:12px}
+.copybtn{margin:0 10px 0 0;padding:6px 12px;border-radius:8px;border:1px solid #a8a29e;background:#fff;cursor:pointer;font-size:13px;font-weight:600}
+.copybtn:hover{background:var(--soft)}.copybtn.ok{border-color:#86efac;background:var(--grnbg);color:var(--grn)}
+.toolbar{display:flex;align-items:center;gap:8px;margin:0 0 8px;flex-wrap:wrap}
 
 .sec{margin:18px 0 8px}.sec>h2{cursor:pointer;user-select:none;display:flex;align-items:center;gap:8px;margin:0}
 .sec>h2 .chev{display:inline-block;width:1em;color:var(--mute);font-weight:400;transition:transform .15s}
@@ -312,6 +315,72 @@ function callHtml(c,n,parent){const st=STATUS[c.status];
  <div class="label">What came back${c.diffs.length?`<button class="dtoggle" onclick="toggleDiffs('${c.id}')">${DIFFS_ONLY?'Show full JSON':'Show diffs only'}</button>`:''}</div><div class="sides">${sideHtml(c.old,parseDiffs(c.diffs),'old')}${sideHtml(c.new,parseDiffs(c.diffs),'new')}</div>
  ${c.note?`<p class="meta">${esc(c.note)}</p>`:''}
  <p><strong>Verdict: ${esc(c.verdict)}</strong></p>`}
+function fmtSide(s){
+ if(!s)return '(none)';
+ const lines=[];
+ lines.push(`${s.label||''}`.trim());
+ if(s.url)lines.push(`URL: ${s.url}`);
+ lines.push(`Status: ${s.status}`);
+ if(s.reqHeaders){lines.push('Request headers:');lines.push(hdrs(s.reqHeaders))}
+ if(s.reqBody!==undefined&&s.reqBody!==null){lines.push('Request body:');lines.push(typeof s.reqBody==='string'?s.reqBody:JSON.stringify(s.reqBody,null,2))}
+ else if(s.url)lines.push('Request body: (no body)');
+ if(s.headers){lines.push('Response headers:');lines.push(hdrs(s.headers))}
+ if(s.body!==undefined){lines.push('Response body:');lines.push(typeof s.body==='string'?s.body:JSON.stringify(s.body,null,2))}
+ if(s.at)lines.push(`Captured: ${s.at}`);
+ return lines.join('\n')}
+function fmtCall(c){
+ const L=[];
+ L.push(`### ${c.id||''} · ${c.method||''} ${c.path||''}`.trim());
+ if(c.name)L.push(`Name: ${c.name}`);
+ if(c.status)L.push(`Status: ${STATUS[c.status]?STATUS[c.status].label:c.status}`);
+ if(c.verdict)L.push(`Verdict: ${c.verdict}`);
+ if(c.note)L.push(`Note: ${c.note}`);
+ if(c.diffs&&c.diffs.length){L.push('Diffs:');c.diffs.forEach(d=>L.push(`- ${d}`))}
+ L.push('');L.push('--- OLD ---');L.push(fmtSide(c.old));
+ L.push('');L.push('--- NEW ---');L.push(fmtSide(c.new));
+ return L.join('\n')}
+function buildPrompt(id){
+ const f=find(id);if(!f)return '';
+ const t=f.t;const L=[];
+ L.push(`TECH-317 checklist · ${t.id}`);
+ if(f.parent){
+  L.push(`Call report`);
+  L.push(`Parent: ${f.parent.id} · ${f.parent.name}`);
+  if(f.parent.linear)L.push(`Linear: ${f.parent.linear}`);
+  if(f.parent.simple)L.push(`Description: ${f.parent.simple}`);
+  L.push('');L.push(fmtCall(t));
+ }else if(t.children&&t.children.length){
+  L.push(`Test: ${t.name||''}`);
+  if(t.linear)L.push(`Linear: ${t.linear}`);
+  if(t.simple)L.push(`Description: ${t.simple}`);
+  if(t.status)L.push(`Status: ${STATUS[t.status]?STATUS[t.status].label:t.status}`);
+  if(t.verdict)L.push(`Verdict: ${t.verdict}`);
+  if(t.time)L.push(`Time: ${t.time}`);
+  if(t.note)L.push(`Note: ${t.note}`);
+  L.push('');L.push(`API calls (${t.children.length}):`);
+  t.children.forEach((c,i)=>{L.push('');L.push(`==== Call ${i+1} ====`);L.push(fmtCall(c))});
+ }else{
+  L.push(`Test: ${t.name||''}`);
+  if(t.linear)L.push(`Linear: ${t.linear}`);
+  if(t.simple)L.push(`Description: ${t.simple}`);
+  if(t.status)L.push(`Status: ${STATUS[t.status]?STATUS[t.status].label:t.status}`);
+  if(t.sent){L.push('');L.push('What we did:');L.push(t.sent)}
+  if(t.oldS!==undefined){L.push('');L.push('OLD:');L.push(String(t.oldS))}
+  if(t.newS!==undefined){L.push('');L.push('NEW:');L.push(String(t.newS))}
+  if(t.verdict)L.push(`Verdict: ${t.verdict}`);
+  if(t.time)L.push(`Checked: ${t.time}`);
+  if(t.note)L.push(`Note: ${t.note}`);
+ }
+ L.push('');L.push(`Source: https://wazloes.github.io/tech-317-qa-dashboard/checklist/#${id}`);
+ return L.join('\n')}
+async function copyPrompt(id,btn){
+ const text=buildPrompt(id);if(!text)return;
+ const done=()=>{if(btn){const o=btn.textContent;btn.textContent='Copied';btn.classList.add('ok');setTimeout(()=>{btn.textContent=o;btn.classList.remove('ok')},1500)}};
+ try{await navigator.clipboard.writeText(text);done()}
+ catch(e){const ta=document.createElement('textarea');ta.value=text;ta.style.position='fixed';ta.style.left='-9999px';document.body.appendChild(ta);ta.select();
+  try{document.execCommand('copy');done()}catch(err){alert('Copy failed — select and copy manually.');console.error(err)}
+  document.body.removeChild(ta)}
+}
 function openM(id){const f=find(id);if(!f)return;const t=f.t;let h='';
  if(f.parent) h=callHtml(t,f.n,f.parent);
  else if(t.children){const st=STATUS[t.status];
@@ -323,7 +392,7 @@ function openM(id){const f=find(id);if(!f)return;const t=f.t;let h='';
   <div class="req"><div class="label">What we did</div><pre>${esc(t.sent)}</pre></div>
   <div class="sides"><div class="side"><h4>OLD</h4><pre>${esc(t.oldS)}</pre></div><div class="side"><h4>NEW</h4><pre>${esc(t.newS)}</pre></div></div>
   <p><strong>${esc(t.verdict)}</strong></p><p class="meta">Checked ${esc(t.time)}</p>`}
- document.getElementById('mbox').innerHTML=`<button class="close" onclick="closeM()">×</button>`+h;
+ document.getElementById('mbox').innerHTML=`<button class="close" onclick="closeM()">×</button><div class="toolbar"><button type="button" class="copybtn" id="copybtn" onclick="copyPrompt('${id}',this)">Copy prompt</button><span class="meta">Full test data — paste into any chat</span></div>`+h;
  document.getElementById('modal').classList.add('open');document.body.style.overflow='hidden';location.hash=id;window.scrollTo(0,0);document.getElementById('modal').scrollTop=0}
 function closeM(){document.getElementById('modal').classList.remove('open');document.body.style.overflow='';if(location.hash)history.replaceState(null,'',location.pathname)}
 const OPEN_TESTS=new Set();
