@@ -54,6 +54,33 @@ td.act{width:1%;white-space:nowrap;vertical-align:middle}
 .toolbar{display:flex;align-items:center;gap:8px;margin:0 0 8px;flex-wrap:wrap}
 .toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(20px);background:#1c1917;color:#fafaf9;padding:12px 18px;border-radius:10px;font-size:14px;font-weight:500;box-shadow:0 8px 24px rgba(0,0,0,.25);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:10000;max-width:min(92vw,420px);text-align:center}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.filters{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 16px}
+.filters .flabel{font-size:12px;color:var(--mute);font-weight:600;margin-right:4px}
+.fchip{padding:5px 11px;border-radius:999px;border:1px solid var(--line,#e7e5e4);background:#fff;cursor:pointer;font-size:12px;font-weight:600;color:var(--ink,#1c1917)}
+.fchip:hover{background:var(--soft,#f5f5f4)}
+.fchip.on{background:#1c1917;color:#fafaf9;border-color:#1c1917}
+.fchip .n{opacity:.7;font-weight:500;margin-left:4px}
+.dbblock{margin:18px 0 8px;padding:14px 16px;border:1px solid #e7e5e4;border-radius:12px;background:#fafaf9}
+.dbblock> .label{margin:0 0 10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.dbtable{margin:12px 0 4px;border:1px solid #e7e5e4;border-radius:10px;overflow:hidden;background:#fff}
+.dbtable>h4{margin:0;padding:10px 12px;font-size:13px;background:#f5f5f4;border-bottom:1px solid #e7e5e4;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.dbtable>h4 .meta{font-weight:500}
+.dbrow{border-top:1px solid #f5f5f4;padding:10px 12px}
+.dbrow:first-of-type{border-top:none}
+.dbrow.same{display:none}
+.dbrow.pk{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;font-weight:600;margin-bottom:6px}
+.dbfields{width:100%;border-collapse:collapse;font-size:12px}
+.dbfields th{text-align:left;color:var(--mute);font-weight:600;padding:2px 8px 4px 0;border-bottom:1px solid #f5f5f4}
+.dbfields td{padding:3px 8px 3px 0;vertical-align:top;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;word-break:break-word}
+.dbfields td.f{color:var(--mute);font-family:inherit;font-weight:600;white-space:nowrap;width:1%}
+.dbfields tr.chg td.v{background:var(--amb,#fff7ed)}
+.dbfields tr.miss td.v{background:#fef2f2}
+.dbfields tr.extra td.v{background:#f5f5f4}
+.dbmiss{color:#b91c1c;font-weight:600}
+.dbextra{color:#57534e}
+.dbfold{padding:8px 12px;font-size:12px;color:var(--mute);background:#fafaf9}
+.dbempty{font-size:13px;color:var(--mute);margin:0}
+.dbstub{font-size:13px;color:var(--mute);margin:0;padding:4px 0}
 
 .sec{margin:18px 0 8px}.sec>h2{cursor:pointer;user-select:none;display:flex;align-items:center;gap:8px;margin:0}
 .sec>h2 .chev{display:inline-block;width:1em;color:var(--mute);font-weight:400;transition:transform .15s}
@@ -72,6 +99,7 @@ td.idcol .mono{font-weight:600}
 <p class="sub">Linear story on staging5 — one box at a time. Click a row for what was sent, what came back, and OLD (local) vs NEW (staging5). Source: <a href="https://linear.app/faberconnect/issue/TECH-317/qa-waz-payments-hourstimecards-invoicing-pdfs-authotpjwt-on-staging5">TECH-317</a>.</p>
 
 <div class="banner" id="banner"></div>
+<div class="filters" id="filters"></div>
 <div id="main"></div>
 <p class="meta" style="margin-top:40px">HTML · personal GitHub Pages · not a Grok Page.</p>
 </div>
@@ -307,6 +335,68 @@ function bodyHtml(body,diffs,which,force){const DO=force||DIFFS_ONLY;let j;try{j
   return esc(JSON.stringify(v))}
  return wrap('',r(j,'',0))}
 function toggleDiffs(id){DIFFS_ONLY=!DIFFS_ONLY;openM(id)}
+const MUTATING=new Set(['POST','PUT','PATCH','DELETE']);
+let DB_DIFFS_ONLY=true;
+let STATUS_FILTER=null; // null = all
+function toggleDbDiffs(id){DB_DIFFS_ONLY=!DB_DIFFS_ONLY;openM(id)}
+function setStatusFilter(s){STATUS_FILTER=(s==='all'?null:s);render()}
+function rowKey(row,key){const ks=Array.isArray(key)?key:[key||'id'];return ks.map(k=>String(row?.[k]??'∅')).join('|')}
+function cellStr(v){if(v===undefined)return undefined;if(v===null)return 'null';if(typeof v==='object')return JSON.stringify(v);return String(v)}
+function dbRowDiff(oldR,newR){
+  const fields=Array.from(new Set([...Object.keys(oldR||{}),...Object.keys(newR||{})])).sort();
+  const cells=[];let changes=0;
+  for(const f of fields){
+    const ov=oldR?oldR[f]:undefined,nv=newR?newR[f]:undefined;
+    const os=cellStr(ov),ns=cellStr(nv);
+    if(oldR&&newR){
+      if(os===ns){if(!DB_DIFFS_ONLY)cells.push({f,os,ns,kind:'same'});}
+      else{changes++;cells.push({f,os,ns,kind:'chg'})}
+    }else if(oldR&&!newR){changes++;cells.push({f,os,ns:'—',kind:'miss'})}
+    else{changes++;cells.push({f,os:'—',ns,kind:'extra'})}
+  }
+  return {cells,changes}
+}
+function dbTableHtml(tbl){
+  const key=tbl.key||'id';
+  const oldRows=tbl.old||[], newRows=tbl.new||[];
+  const oMap=new Map(oldRows.map(r=>[rowKey(r,key),r]));
+  const nMap=new Map(newRows.map(r=>[rowKey(r,key),r]));
+  const keys=Array.from(new Set([...oMap.keys(),...nMap.keys()])).sort();
+  let same=0,changed=0,onlyOld=0,onlyNew=0;
+  const parts=[];
+  for(const k of keys){
+    const o=oMap.get(k),n=nMap.get(k);
+    if(o&&n){
+      const d=dbRowDiff(o,n);
+      if(!d.changes){same++;if(DB_DIFFS_ONLY)continue;parts.push(`<div class="dbrow"><div class="dbrow pk">${esc(k)} · same</div></div>`);continue}
+      changed++;
+      const rows=d.cells.filter(c=>!DB_DIFFS_ONLY||c.kind!=='same').map(c=>`<tr class="${c.kind}"><td class="f">${esc(c.f)}</td><td class="v">${esc(c.os)}</td><td class="v">${esc(c.ns)}</td></tr>`).join('');
+      parts.push(`<div class="dbrow"><div class="dbrow pk">${esc(Array.isArray(key)?key.join('+'):key)}=${esc(k)} · changed</div><table class="dbfields"><thead><tr><th>Field</th><th>OLD</th><th>NEW</th></tr></thead><tbody>${rows}</tbody></table></div>`);
+    }else if(o){
+      onlyOld++;
+      const d=dbRowDiff(o,null);
+      const rows=d.cells.map(c=>`<tr class="miss"><td class="f">${esc(c.f)}</td><td class="v">${esc(c.os)}</td><td class="v dbmiss">missing on NEW</td></tr>`).join('');
+      parts.push(`<div class="dbrow"><div class="dbrow pk">${esc(k)} · <span class="dbmiss">only on OLD</span></div><table class="dbfields"><thead><tr><th>Field</th><th>OLD</th><th>NEW</th></tr></thead><tbody>${rows}</tbody></table></div>`);
+    }else{
+      onlyNew++;
+      const d=dbRowDiff(null,n);
+      const rows=d.cells.map(c=>`<tr class="extra"><td class="f">${esc(c.f)}</td><td class="v dbextra">missing on OLD</td><td class="v">${esc(c.ns)}</td></tr>`).join('');
+      parts.push(`<div class="dbrow"><div class="dbrow pk">${esc(k)} · <span class="dbextra">only on NEW</span></div><table class="dbfields"><thead><tr><th>Field</th><th>OLD</th><th>NEW</th></tr></thead><tbody>${rows}</tbody></table></div>`);
+    }
+  }
+  const summary=`${changed} changed · ${onlyOld} only OLD · ${onlyNew} only NEW · ${same} same`;
+  const fold=DB_DIFFS_ONLY&&same?`<div class="dbfold">… ${same} matching row${same===1?'':'s'} collapsed</div>`:'';
+  const body=parts.length?parts.join('')+(fold):`<p class="dbempty">${keys.length?'All rows match.':'No rows captured.'}</p>`;
+  return `<div class="dbtable"><h4><span>${esc(tbl.name||'(table)')}</span><span class="meta">${summary}</span></h4>${body}</div>`
+}
+function dbHtml(c){
+  if(!MUTATING.has(String(c.method||'').toUpperCase()))return '';
+  const tog=`<button class="dtoggle" onclick="toggleDbDiffs('${c.id}')">${DB_DIFFS_ONLY?'Show matching rows':'Collapse matching rows'}</button>`;
+  if(!c.db||!(c.db.tables&&c.db.tables.length)){
+    return `<div class="dbblock"><div class="label">Database · OLD vs NEW ${tog}</div><p class="dbstub">Mutating call — DB snapshot not captured yet. Expected shape: <span class="mono">db.tables[{ name, key, old:[row…], new:[row…] }]</span></p>${c.db&&c.db.note?`<p class="meta">${esc(c.db.note)}</p>`:''}</div>`
+  }
+  return `<div class="dbblock"><div class="label">Database · OLD vs NEW ${tog}</div>${(c.db.tables||[]).map(dbTableHtml).join('')}${c.db.note?`<p class="meta">${esc(c.db.note)}</p>`:''}</div>`
+}
 function sideHtml(s,diffs,which){return `<div class="side"><h4>${esc(s.label)}</h4>
  <div class="code ${s.status<400?'ok':'bad'}">${esc(s.status)}</div>
  <div class="meta mono" style="margin-top:4px">${esc(s.url)}</div>
@@ -321,6 +411,7 @@ function callHtml(c,n,parent){const st=STATUS[c.status];
  <div class="meta">Part of ${esc(parent.id)} · ${esc(parent.name)} — ${esc(parent.linear)}</div>
  ${sentHtml(c)}
  <div class="label">What came back${c.diffs.length?`<button class="dtoggle" onclick="toggleDiffs('${c.id}')">${DIFFS_ONLY?'Show full JSON':'Show diffs only'}</button>`:''}</div><div class="sides">${sideHtml(c.old,parseDiffs(c.diffs),'old')}${sideHtml(c.new,parseDiffs(c.diffs),'new')}</div>
+ ${dbHtml(c)}
  ${c.note?`<p class="meta">${esc(c.note)}</p>`:''}
  <p><strong>Verdict: ${esc(c.verdict)}</strong></p>`}
 function fmtSide(s){
@@ -346,6 +437,18 @@ function fmtCall(c){
  if(c.diffs&&c.diffs.length){L.push('Diffs:');c.diffs.forEach(d=>L.push(`- ${d}`))}
  L.push('');L.push('--- OLD ---');L.push(fmtSide(c.old));
  L.push('');L.push('--- NEW ---');L.push(fmtSide(c.new));
+ if(MUTATING.has(String(c.method||'').toUpperCase())){
+  L.push('');L.push('--- DATABASE OLD vs NEW ---');
+  if(!c.db||!(c.db.tables&&c.db.tables.length))L.push('(DB snapshot not captured yet)');
+  else (c.db.tables||[]).forEach(tbl=>{
+   L.push(`Table: ${tbl.name||'?'} (key ${Array.isArray(tbl.key)?tbl.key.join('+'):(tbl.key||'id')})`);
+   const key=tbl.key||'id';const oMap=new Map((tbl.old||[]).map(r=>[rowKey(r,key),r]));const nMap=new Map((tbl.new||[]).map(r=>[rowKey(r,key),r]));
+   const keys=Array.from(new Set([...oMap.keys(),...nMap.keys()])).sort();
+   keys.forEach(k=>{const o=oMap.get(k),n=nMap.get(k);const d=dbRowDiff(o||null,n||null);const ch=d.cells.filter(x=>x.kind!=='same');
+    if(!ch.length)return;L.push(`  row ${k}:`);ch.forEach(x=>L.push(`    ${x.f}: ${x.os} → ${x.ns} (${x.kind})`))});
+  });
+  if(c.db&&c.db.note)L.push(`DB note: ${c.db.note}`);
+ }
  return L.join('\n')}
 function buildPrompt(id){
  const f=find(id);if(!f)return '';
@@ -414,9 +517,12 @@ const OPEN_TESTS=new Set();
 const OPEN_SECS=new Set(); // all sections start collapsed
 function toggleSec(id,ev){ev.stopPropagation();const el=document.getElementById('sec-'+id);if(!el)return;el.classList.toggle('collapsed');if(el.classList.contains('collapsed'))OPEN_SECS.delete(id);else OPEN_SECS.add(id)}
 function toggleTest(id,ev){ev.stopPropagation();if(OPEN_TESTS.has(id))OPEN_TESTS.delete(id);else OPEN_TESTS.add(id);render()}
+function matchFilter(t){if(!STATUS_FILTER)return true;if(t.status===STATUS_FILTER)return true;return (t.children||[]).some(ch=>ch.status===STATUS_FILTER)}
 function render(){const c=s=>TESTS.filter(t=>t.status===s).length;const calls=TESTS.reduce((a,t)=>a+(t.children||[]).length,0);
  document.getElementById('banner').innerHTML=`<strong>In progress.</strong> ${c('pass')} pass · ${c('warn')} pass with ! · ${c('fail')} fail · ${c('skip')} skipped · ${c('blocked')} blocked · ${c('wait')} waiting. ${calls} API calls. Expand a test to see its calls; click a row for the report.`;
- function rows(sec){const l=TESTS.filter(t=>t.section===sec);if(!l.length)return `<p class="sec-empty">Not started.</p>`;
+ const chips=[['all','All',TESTS.length],['pass','Pass',c('pass')],['warn','Pass !',c('warn')],['fail','Fail',c('fail')],['blocked','Blocked',c('blocked')],['skip','Skipped',c('skip')],['wait','Waiting',c('wait')],['todo','Not started',c('todo')]];
+ document.getElementById('filters').innerHTML=`<span class="flabel">Status</span>`+chips.map(([k,lab,n])=>{const on=(k==='all'&&!STATUS_FILTER)||STATUS_FILTER===k?' on':'';return `<button type="button" class="fchip${on}" onclick="setStatusFilter('${k}')">${lab}<span class="n">${n}</span></button>`}).join('');
+ function rows(sec){const l=TESTS.filter(t=>t.section===sec&&matchFilter(t));if(!TESTS.filter(t=>t.section===sec).length)return `<p class="sec-empty">Not started.</p>`;if(!l.length)return `<p class="sec-empty">No tests match this status.</p>`;
   return `<table><thead><tr><th class="idcol">ID</th><th style="width:120px">Status</th><th>Test / API call</th><th style="width:150px">OLD → NEW</th><th></th></tr></thead><tbody>${l.map(t=>{const st=STATUS[t.status];
    const hasKids=!!(t.children&&t.children.length);const open=OPEN_TESTS.has(t.id);
    const tw=hasKids?`<span class="tw" onclick="toggleTest('${t.id}',event)">${open?'▼':'▶'}</span>`:'';
@@ -424,7 +530,7 @@ function render(){const c=s=>TESTS.filter(t=>t.status===s).length;const calls=TE
    if(hasKids&&open){for(const ch of t.children){const s2=STATUS[ch.status];
     r+=`<tr class="click child" onclick="openM('${ch.id}')"><td class="idcol mono">${esc(ch.id)}</td><td class="${s2.cls}">${lbl(s2)}</td><td class="tname"><span class="mono">${esc(ch.method)} ${esc(ch.path)}</span><div class="hint">${esc(ch.name)}</div></td><td class="meta">${ch.old.status} → ${ch.new.status}</td><td class="act">${copyBtnHtml(ch.id)}</td></tr>`}}
    return r}).join('')}</tbody></table>`}
- function sec(id,title,body){const open=OPEN_SECS.has(id);return `<div class="sec${open?'':' collapsed'}" id="sec-${id}"><h2 onclick="toggleSec('${id}',event)"><span class="chev">▼</span>${title}</h2><div class="sec-body">${body}</div></div>`}
+ function sec(id,title,body){let open=OPEN_SECS.has(id);if(STATUS_FILTER&&TESTS.some(t=>t.section===id&&matchFilter(t)))open=true;return `<div class="sec${open?'':' collapsed'}" id="sec-${id}"><h2 onclick="toggleSec('${id}',event)"><span class="chev">▼</span>${title}</h2><div class="sec-body">${body}</div></div>`}
  const empty=['stripe','hours','pay','invoice','reg'].map((id,i)=>sec(id,['§3 Stripe','§4 Hours','§5 Worker pay','§6 Invoices / PDFs','§7 Regression'][i],rows(id))).join('');
  document.getElementById('main').innerHTML=sec('pre','Preconditions',rows('pre'))+sec('jwt','§1 JWT',rows('jwt'))+sec('otp','§2 OTP / v2 auth',rows('otp'))+empty;
  const h=location.hash.slice(1);if(h){const f=find(h);if(f&&f.parent&&!OPEN_TESTS.has(f.parent.id)){OPEN_TESTS.add(f.parent.id);OPEN_SECS.add(f.parent.section||'jwt');render();return}openM(h)}}
