@@ -17,7 +17,7 @@ table{width:100%;border-collapse:collapse;background:var(--card);border:1px soli
 th{text-align:left;font-size:13px;font-weight:600;color:var(--mute);padding:12px 16px;border-bottom:1px solid var(--line);background:var(--soft)}
 td{padding:14px 16px;border-bottom:1px solid var(--line);vertical-align:top}tr:last-child td{border-bottom:0}
 tbody tr.click{cursor:pointer}tbody tr.click:hover{background:#f8f7f5}
-.ok{color:var(--grn);font-weight:600}.wait{color:var(--amb);font-weight:600}.todo{color:var(--mute)}.fail{color:var(--red);font-weight:600}.skip{color:var(--mute);font-weight:600}
+.ok{color:var(--grn);font-weight:600}.wait{color:var(--amb);font-weight:600}.todo{color:var(--mute)}.fail{color:var(--red);font-weight:600}.skip{color:#3730a3;font-weight:600}
 .meta{color:var(--mute);font-size:14px}.hint{color:var(--mute);font-size:13px;margin:8px 0 0}
 .modal{position:fixed;inset:0;background:rgba(28,25,23,.45);display:none;align-items:flex-start;justify-content:center;padding:40px 16px;overflow:auto;z-index:9}
 .modal.open{display:flex}.box{background:#fff;border-radius:14px;max-width:1100px;width:100%;padding:28px 32px;box-shadow:0 20px 60px rgba(0,0,0,.2)}
@@ -43,7 +43,7 @@ tbody tr.click{cursor:pointer}tbody tr.click:hover{background:#f8f7f5}
 .sentcard pre{margin:6px 0 0;max-height:360px}
 
 .badge{display:inline-block;font-size:12px;font-weight:600;padding:2px 8px;border-radius:5px}
-.badge.pass{color:var(--grn);background:var(--grnbg)}.badge.fail{color:var(--red);background:var(--redbg)}.badge.newbug{color:#6d28d9;background:#f3e8ff}.badge.wait{color:var(--amb);background:var(--ambbg)}.badge.blocked{color:#c2410c;background:#ffedd5}.badge.todo{color:var(--mute);background:var(--soft)}.badge.skip{color:#57534e;background:#f5f5f4}
+.badge.pass{color:var(--grn);background:var(--grnbg)}.badge.fail{color:var(--red);background:var(--redbg)}.badge.newbug{color:#c2410c;background:#ffedd5}.badge.wait{color:var(--amb);background:var(--ambbg)}.badge.blocked{color:#1d4ed8;background:#dbeafe}.badge.todo{color:var(--mute);background:var(--soft)}.badge.skip{color:#3730a3;background:#e0e7ff}
 .sec-empty{color:var(--mute);padding:8px 0}
 a{color:#1d4ed8}
 .warn{color:#a16207;font-weight:600}.badge.warn{color:#a16207;background:#fef9c3}
@@ -316,7 +316,7 @@ const TESTS=[
   "status": "pass"
  }
 ];
-const STATUS={pass:{cls:'ok',badge:'pass',label:'Pass'},warn:{cls:'warn',badge:'warn',label:'Pass !'},fail:{cls:'fail',badge:'fail',label:'Fail'},newbug:{cls:'newbug',badge:'newbug',label:'New Bug'},wait:{cls:'wait',badge:'wait',label:'Waiting'},todo:{cls:'todo',badge:'todo',label:'Not started'},skip:{cls:'skip',badge:'skip',label:'Skipped'},blocked:{cls:'wait',badge:'blocked',label:'Blocked'}};
+const STATUS={pass:{cls:'ok',badge:'pass',label:'Pass'},warn:{cls:'warn',badge:'warn',label:'Pass !'},fail:{cls:'fail',badge:'fail',label:'Fail'},newbug:{cls:'newbug',badge:'newbug',label:'New Bug'},wait:{cls:'wait',badge:'wait',label:'Waiting'},todo:{cls:'todo',badge:'todo',label:'Not started'},skip:{cls:'skip',badge:'skip',label:'Skipped'},blocked:{cls:'blocked',badge:'blocked',label:'Blocked'}};
 function lbl(st){return st.badge==='warn'?'<span class="okp">Pass</span><span class="bang">!</span>':st.label}
 function badge(st){return st.badge==='warn'?'<span class="badge pass">Pass</span><span class="bang">!</span>':`<span class="badge ${st.badge}">${st.label}</span>`}
 function diffNotes(c){const ds=parseDiffs(c.diffs);const L=[];
