@@ -31,6 +31,17 @@ tbody tr.click{cursor:pointer}tbody tr.click:hover{background:#f8f7f5}
 .side .code.ok{color:var(--grn)}.side .code.bad{color:var(--red)}
 .side pre,.req pre{background:#1c1917;color:#e7e5e4;padding:12px;border-radius:8px;font-size:13px;overflow:auto;margin:8px 0 0;white-space:pre-wrap;word-break:break-word}
 .req{margin:16px 0}.label{font-size:13px;font-weight:600;color:var(--mute);letter-spacing:.04em;text-transform:uppercase}
+.panel{margin:16px 0;padding:14px 16px;border:1px solid var(--line);border-radius:12px;background:#fff}
+.panel>.plabel{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin:0 0 12px;font-size:13px;font-weight:700;color:var(--ink);letter-spacing:.06em;text-transform:uppercase}
+.sentgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:640px){.sentgrid{grid-template-columns:1fr}}
+.sentcard{border:1px solid var(--line);border-radius:10px;padding:12px 14px;background:var(--soft)}
+.sentcard .meta{margin:0 0 8px;font-weight:700}
+.sentcard .kv{margin:0 0 8px;font-size:13px;line-height:1.45}
+.sentcard .kv div{margin:2px 0}
+.sentcard .k{color:var(--mute);font-weight:600;display:inline-block;min-width:72px}
+.sentcard pre{margin:6px 0 0;max-height:360px}
+
 .badge{display:inline-block;font-size:12px;font-weight:600;padding:2px 8px;border-radius:5px}
 .badge.pass{color:var(--grn);background:var(--grnbg)}.badge.fail{color:var(--red);background:var(--redbg)}.badge.newbug{color:#6d28d9;background:#f3e8ff}.badge.wait{color:var(--amb);background:var(--ambbg)}.badge.blocked{color:#c2410c;background:#ffedd5}.badge.todo{color:var(--mute);background:var(--soft)}.badge.skip{color:#57534e;background:#f5f5f4}
 .sec-empty{color:var(--mute);padding:8px 0}
@@ -450,15 +461,37 @@ function sideHtml(s,diffs,which){return `<div class="side"><h4>${esc(s.label)}</
  <div class="label" style="margin-top:12px">Response headers</div><pre>${esc(hdrs(s.headers))}</pre>
  <div class="label" style="margin-top:12px">Response body (${DIFFS_ONLY?'diffs only':'full'})</div><pre>${bodyHtml(s.body,diffs||[],which)}</pre>
  <p class="meta">Captured ${esc(s.at)}</p></div>`}
-function sentHtml(c){const r=s=>`${esc(c.method)} ${esc(s.url)}\n${esc(hdrs(s.reqHeaders))}\n\n${esc(s.reqBody??'(no body)')}`;
- return `<div class="req"><div class="label">What we sent</div><div class="sides"><div><div class="meta">OLD</div><pre>${r(c.old)}</pre></div><div><div class="meta">NEW</div><pre>${r(c.new)}</pre></div></div></div>`}
+let SENT_RAW=false;
+function toggleSent(id){SENT_RAW=!SENT_RAW;openM(id)}
+function prettyBody(b){
+  if(b===undefined||b===null||b==='')return '(no body)';
+  if(typeof b==='object')try{return JSON.stringify(b,null,2)}catch(e){return String(b)}
+  const s=String(b);
+  try{return JSON.stringify(JSON.parse(s),null,2)}catch(e){return s}
+}
+function sentRaw(c,s){return `${c.method||''} ${s.url||''}\n${hdrs(s.reqHeaders)}\n\n${s.reqBody??'(no body)'}`}
+function sentPretty(c,s){
+  const hs=Object.entries(s.reqHeaders||{});
+  const htm=hs.length?hs.map(([k,v])=>`<div><span class="k">${esc(k)}</span> ${esc(v)}</div>`).join(''):`<div class="meta">(no headers)</div>`;
+  return `<div class="kv"><div><span class="k">Method</span> <span class="mono">${esc(c.method||'')}</span></div>
+   <div><span class="k">URL</span> <span class="mono">${esc(s.url||'')}</span></div></div>
+   <div class="label" style="margin-top:8px">Headers</div><div class="kv">${htm}</div>
+   <div class="label" style="margin-top:8px">Body</div><pre>${esc(prettyBody(s.reqBody))}</pre>`
+}
+function sentHtml(c){
+  const side=(label,s)=>`<div class="sentcard"><div class="meta">${label}</div>${SENT_RAW?`<pre>${esc(sentRaw(c,s))}</pre>`:sentPretty(c,s)}</div>`;
+  return `<div class="panel"><div class="plabel"><span>Sent</span><button type="button" class="dtoggle" onclick="toggleSent('${c.id}')">${SENT_RAW?'Show formatted':'Show raw'}</button></div>
+   <div class="sentgrid">${side('OLD',c.old||{})}${side('NEW',c.new||{})}</div></div>`
+}
 function callHtml(c,n,parent){const st=STATUS[c.status];
+ const diffBtn=(c.diffs&&c.diffs.length)?`<button type="button" class="dtoggle" onclick="toggleDiffs('${c.id}')">${DIFFS_ONLY?'Show full JSON':'Show diffs only'}</button>`:'';
  return `${badge(st)}
  <h3>${esc(c.id)} · Call ${n} · <span class="mono">${esc(c.method)} ${esc(c.path)}</span></h3>${explainHtml(c)}${diffTop(c)}
  ${dbHtml(c)}
  <div class="meta">Part of ${esc(parent.id)} · ${esc(parent.name)} — ${esc(parent.linear)}</div>
  ${sentHtml(c)}
- <div class="label">What came back${c.diffs.length?`<button class="dtoggle" onclick="toggleDiffs('${c.id}')">${DIFFS_ONLY?'Show full JSON':'Show diffs only'}</button>`:''}</div><div class="sides">${sideHtml(c.old,parseDiffs(c.diffs),'old')}${sideHtml(c.new,parseDiffs(c.diffs),'new')}</div>
+ <div class="panel"><div class="plabel"><span>Response</span>${diffBtn}</div>
+ <div class="sides">${sideHtml(c.old,parseDiffs(c.diffs||[]),'old')}${sideHtml(c.new,parseDiffs(c.diffs||[]),'new')}</div></div>
  ${c.note?`<p class="meta">${esc(c.note)}</p>`:''}
  <p><strong>Verdict: ${esc(c.verdict)}</strong></p>`
 }
