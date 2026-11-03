@@ -496,6 +496,91 @@ function callHtml(c,n,parent){const st=stOf(c.status);
  ${c.note?`<p class="meta">${esc(c.note)}</p>`:''}
  <p><strong>Verdict: ${esc(c.verdict)}</strong></p>`
 }
+function fmtSide(s){
+ if(!s)return '(none)';
+ const lines=[];
+ lines.push(`${s.label||''}`.trim());
+ if(s.url)lines.push(`URL: ${s.url}`);
+ lines.push(`Status: ${s.status}`);
+ if(s.reqHeaders){lines.push('Request headers:');lines.push(hdrs(s.reqHeaders))}
+ if(s.reqBody!==undefined&&s.reqBody!==null){lines.push('Request body:');lines.push(typeof s.reqBody==='string'?s.reqBody:JSON.stringify(s.reqBody,null,2))}
+ else if(s.url)lines.push('Request body: (no body)');
+ if(s.headers){lines.push('Response headers:');lines.push(hdrs(s.headers))}
+ if(s.body!==undefined){lines.push('Response body:');lines.push(typeof s.body==='string'?s.body:JSON.stringify(s.body,null,2))}
+ if(s.at)lines.push(`Captured: ${s.at}`);
+ return lines.join('\n')}
+function fmtCall(c){
+ const L=[];
+ L.push(`### ${c.id||''} · ${c.method||''} ${c.path||''}`.trim());
+ if(c.name)L.push(`Name: ${c.name}`);
+ if(c.status)L.push(`Status: ${stOf(c.status).label}`);
+ if(c.verdict)L.push(`Verdict: ${c.verdict}`);
+ if(c.note)L.push(`Note: ${c.note}`);
+ if(c.diffs&&c.diffs.length){L.push('Diffs:');c.diffs.forEach(d=>L.push(`- ${d}`))}
+ L.push('');L.push('--- OLD ---');L.push(fmtSide(c.old));
+ L.push('');L.push('--- NEW ---');L.push(fmtSide(c.new));
+ if(MUTATING.has(String(c.method||'').toUpperCase())){
+  L.push('');L.push('--- DATABASE OLD vs NEW ---');
+  if(!c.db||!(c.db.tables&&c.db.tables.length))L.push('(DB snapshot not captured yet)');
+  else (c.db.tables||[]).forEach(tbl=>{
+   L.push(`Table: ${tbl.name||'?'} (key ${Array.isArray(tbl.key)?tbl.key.join('+'):(tbl.key||'id')})`);
+   const key=tbl.key||'id';const oMap=new Map((tbl.old||[]).map(r=>[rowKey(r,key),r]));const nMap=new Map((tbl.new||[]).map(r=>[rowKey(r,key),r]));
+   const keys=Array.from(new Set([...oMap.keys(),...nMap.keys()])).sort();
+   keys.forEach(k=>{const o=oMap.get(k),n=nMap.get(k);const d=dbRowDiff(o||null,n||null);const ch=d.cells.filter(x=>x.kind!=='same');
+    if(!ch.length)return;L.push(`  row ${k}:`);ch.forEach(x=>L.push(`    ${x.f}: ${x.os} → ${x.ns} (${x.kind})`))});
+  });
+  if(c.db&&c.db.note)L.push(`DB note: ${c.db.note}`);
+ }
+ return L.join('\n')}
+function buildPrompt(id){
+ const f=find(id);if(!f)return '';
+ const t=f.t;const L=[];
+ L.push(`TECH-317 checklist · ${t.id}`);
+ if(f.parent){
+  L.push(`Call report`);
+  L.push(`Parent: ${f.parent.id} · ${f.parent.name}`);
+  if(f.parent.linear)L.push(`Linear: ${f.parent.linear}`);
+  if(f.parent.simple)L.push(`Description: ${f.parent.simple}`);
+  L.push('');L.push(fmtCall(t));
+ }else if(t.children&&t.children.length){
+  L.push(`Test: ${t.name||''}`);
+  if(t.linear)L.push(`Linear: ${t.linear}`);
+  if(t.simple)L.push(`Description: ${t.simple}`);
+  if(t.status)L.push(`Status: ${stOf(t.status).label}`);
+  if(t.verdict)L.push(`Verdict: ${t.verdict}`);
+  if(t.time)L.push(`Time: ${t.time}`);
+  if(t.note)L.push(`Note: ${t.note}`);
+  L.push('');L.push(`API calls (${t.children.length}):`);
+  t.children.forEach((c,i)=>{L.push('');L.push(`==== Call ${i+1} ====`);L.push(fmtCall(c))});
+ }else{
+  L.push(`Test: ${t.name||''}`);
+  if(t.linear)L.push(`Linear: ${t.linear}`);
+  if(t.simple)L.push(`Description: ${t.simple}`);
+  if(t.status)L.push(`Status: ${stOf(t.status).label}`);
+  if(t.sent){L.push('');L.push('What we did:');L.push(t.sent)}
+  if(t.oldS!==undefined){L.push('');L.push('OLD:');L.push(String(t.oldS))}
+  if(t.newS!==undefined){L.push('');L.push('NEW:');L.push(String(t.newS))}
+  if(t.verdict)L.push(`Verdict: ${t.verdict}`);
+  if(t.time)L.push(`Checked: ${t.time}`);
+  if(t.note)L.push(`Note: ${t.note}`);
+ }
+ L.push('');L.push(`Source: https://wazloes.github.io/tech-317-qa-dashboard/checklist/#${id}`);
+ return L.join('\n')}
+function copyBtnHtml(id){
+ return `<button type="button" class="copybtn rowcopy" title="Copy Context" onclick="event.stopPropagation();copyPrompt('${id}',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg><span>Copy Context</span></button>`}
+function showToast(msg){
+ const el=document.getElementById('toast');if(!el)return;
+ el.textContent=msg;el.classList.add('show');
+ clearTimeout(showToast._t);showToast._t=setTimeout(()=>el.classList.remove('show'),2800)}
+async function copyPrompt(id,btn){
+ const text=buildPrompt(id);if(!text)return;
+ const done=()=>{if(btn){btn.classList.add('ok');setTimeout(()=>btn.classList.remove('ok'),1500)}
+  showToast('Copied full test context to Clipboard for your AI')};
+ try{await navigator.clipboard.writeText(text);done()}
+ catch(e){const ta=document.createElement('textarea');ta.value=text;ta.style.position='fixed';ta.style.left='-9999px';document.body.appendChild(ta);ta.select();
+  try{document.execCommand('copy');done()}catch(err){alert('Copy failed — select and copy manually.');console.error(err)}
+  document.body.removeChild(ta)}
+}
 function openM(id){const f=find(id);if(!f)return;const t=f.t;let h='';
  if(f.parent) h=callHtml(t,f.n,f.parent);
  else if(t.children){const st=stOf(t.status);
