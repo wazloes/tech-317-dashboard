@@ -17,7 +17,7 @@ table{width:100%;border-collapse:collapse;background:var(--card);border:1px soli
 th{text-align:left;font-size:13px;font-weight:600;color:var(--mute);padding:12px 16px;border-bottom:1px solid var(--line);background:var(--soft)}
 td{padding:14px 16px;border-bottom:1px solid var(--line);vertical-align:top}tr:last-child td{border-bottom:0}
 tbody tr.click{cursor:pointer}tbody tr.click:hover{background:#f8f7f5}
-.ok{color:var(--grn);font-weight:600}.wait{color:var(--amb);font-weight:600}.todo{color:var(--mute)}.fail{color:var(--red);font-weight:600}.skip{color:#3730a3;font-weight:600}
+.ok{color:var(--grn);font-weight:600}.wait{color:var(--amb);font-weight:600}.todo{color:var(--mute)}.fail{color:var(--red);font-weight:600}.newbug{color:#c2410c;font-weight:600}.blocked{color:#1d4ed8;font-weight:600}.skip{color:#3730a3;font-weight:600}
 .meta{color:var(--mute);font-size:14px}.hint{color:var(--mute);font-size:13px;margin:8px 0 0}
 .modal{position:fixed;inset:0;background:rgba(28,25,23,.45);display:none;align-items:flex-start;justify-content:center;padding:40px 16px;overflow:auto;z-index:9}
 .modal.open{display:flex}.box{background:#fff;border-radius:14px;max-width:1100px;width:100%;padding:28px 32px;box-shadow:0 20px 60px rgba(0,0,0,.2)}
@@ -316,7 +316,8 @@ const TESTS=[
   "status": "pass"
  }
 ];
-const STATUS={pass:{cls:'ok',badge:'pass',label:'Pass'},warn:{cls:'warn',badge:'warn',label:'Pass !'},fail:{cls:'fail',badge:'fail',label:'Fail'},newbug:{cls:'newbug',badge:'newbug',label:'New Bug'},wait:{cls:'wait',badge:'wait',label:'Waiting'},todo:{cls:'todo',badge:'todo',label:'Not started'},skip:{cls:'skip',badge:'skip',label:'Skipped'},blocked:{cls:'blocked',badge:'blocked',label:'Blocked'}};
+const STATUS={pass:{cls:'ok',badge:'pass',label:'Pass'},warn:{cls:'warn',badge:'warn',label:'Pass !'},fail:{cls:'fail',badge:'fail',label:'Fail'},newbug:{cls:'newbug',badge:'newbug',label:'New Bug'},partial:{cls:'warn',badge:'warn',label:'Partial'},info:{cls:'todo',badge:'todo',label:'Info'},wait:{cls:'wait',badge:'wait',label:'Waiting'},todo:{cls:'todo',badge:'todo',label:'Not started'},skip:{cls:'skip',badge:'skip',label:'Skipped'},blocked:{cls:'blocked',badge:'blocked',label:'Blocked'}};
+function stOf(s){return STATUS[s]||STATUS.todo}
 function lbl(st){return st.badge==='warn'?'<span class="okp">Pass</span><span class="bang">!</span>':st.label}
 function badge(st){return st.badge==='warn'?'<span class="badge pass">Pass</span><span class="bang">!</span>':`<span class="badge ${st.badge}">${st.label}</span>`}
 function diffNotes(c){const ds=parseDiffs(c.diffs);const L=[];
@@ -332,7 +333,7 @@ function explainHtml(t){
   if(!t)return '';
   const text=(t.explain||'').trim();
   if(!text)return '';
-  const st=STATUS[t.status]||STATUS.todo;
+  const st=stOf(t.status)||STATUS.todo;
   return `<div class="explain">${badge(st)}<p>${esc(text)}</p></div>`
 }
 function diffTop(c,label){if(!c.diffs||!c.diffs.length)return '';const d=parseDiffs(c.diffs);
@@ -483,7 +484,7 @@ function sentHtml(c){
   return `<div class="panel"><div class="plabel"><span>Sent</span><button type="button" class="dtoggle" onclick="toggleSent('${c.id}')">${SENT_RAW?'Show formatted':'Show raw'}</button></div>
    <div class="sentgrid">${side('OLD',c.old||{})}${side('NEW',c.new||{})}</div></div>`
 }
-function callHtml(c,n,parent){const st=STATUS[c.status];
+function callHtml(c,n,parent){const st=stOf(c.status);
  const diffBtn=(c.diffs&&c.diffs.length)?`<button type="button" class="dtoggle" onclick="toggleDiffs('${c.id}')">${DIFFS_ONLY?'Show full JSON':'Show diffs only'}</button>`:'';
  return `${badge(st)}
  <h3>${esc(c.id)} · Call ${n} · <span class="mono">${esc(c.method)} ${esc(c.path)}</span></h3>${explainHtml(c)}${diffTop(c)}
@@ -497,11 +498,11 @@ function callHtml(c,n,parent){const st=STATUS[c.status];
 }
 function openM(id){const f=find(id);if(!f)return;const t=f.t;let h='';
  if(f.parent) h=callHtml(t,f.n,f.parent);
- else if(t.children){const st=STATUS[t.status];
+ else if(t.children){const st=stOf(t.status);
   h=`${badge(st)}<h3>${esc(t.id)} · ${esc(t.name)}</h3>${explainHtml(t)}<div class="meta">${esc(t.linear)}</div><p class="desc">${esc(t.simple)}</p>
-  <table><thead><tr><th>Call</th><th>Request</th><th>OLD</th><th>NEW</th><th>Result</th></tr></thead><tbody>${t.children.map((c,i)=>`<tr class="click" onclick="openM('${c.id}')"><td>${i+1} · ${esc(c.id)}</td><td class="mono">${esc(c.method)} ${esc(c.path)}<div class="hint">${esc(c.name)}</div></td><td>${c.old.status}</td><td>${c.new.status}</td><td class="${STATUS[c.status].cls}">${lbl(STATUS[c.status])}</td></tr>`).join('')}</tbody></table>
+  <table><thead><tr><th>Call</th><th>Request</th><th>OLD</th><th>NEW</th><th>Result</th></tr></thead><tbody>${t.children.map((c,i)=>`<tr class="click" onclick="openM('${c.id}')"><td>${i+1} · ${esc(c.id)}</td><td class="mono">${esc(c.method)} ${esc(c.path)}<div class="hint">${esc(c.name)}</div></td><td>${c.old.status}</td><td>${c.new.status}</td><td class="${stOf(c.status).cls}">${lbl(stOf(c.status))}</td></tr>`).join('')}</tbody></table>
   <p class="hint">Click a call for its full report.</p><p><strong>${esc(t.verdict)}</strong></p>`}
- else {const st=STATUS[t.status];
+ else {const st=stOf(t.status);
   h=`${badge(st)}<h3>${esc(t.id)} · ${esc(t.name)}</h3>${explainHtml(t)}<div class="meta">${esc(t.linear)}</div>
   <div class="req"><div class="label">What we did</div><pre>${esc(t.sent)}</pre></div>
   <div class="sides"><div class="side"><h4>OLD</h4><pre>${esc(t.oldS)}</pre></div><div class="side"><h4>NEW</h4><pre>${esc(t.newS)}</pre></div></div>
@@ -515,15 +516,15 @@ function toggleSec(id,ev){ev.stopPropagation();const el=document.getElementById(
 function toggleTest(id,ev){ev.stopPropagation();if(OPEN_TESTS.has(id))OPEN_TESTS.delete(id);else OPEN_TESTS.add(id);render()}
 function matchFilter(t){if(!STATUS_FILTER)return true;if(t.status===STATUS_FILTER)return true;return (t.children||[]).some(ch=>ch.status===STATUS_FILTER)}
 function render(){const c=s=>TESTS.filter(t=>t.status===s).length;const calls=TESTS.reduce((a,t)=>a+(t.children||[]).length,0);
- document.getElementById('banner').innerHTML=`<strong>In progress.</strong> ${c('pass')} pass · ${c('warn')} pass with ! · ${c('fail')} fail · ${c('skip')} skipped · ${c('blocked')} blocked · ${c('wait')} waiting. ${calls} API calls. Expand a test to see its calls; click a row for the report.`;
+ document.getElementById('banner').innerHTML=`<strong>In progress.</strong> ${c('pass')} pass · ${c('warn')} pass with ! · ${c('fail')} fail · ${c('newbug')} new bug · ${c('skip')} skipped · ${c('blocked')} blocked · ${c('wait')} waiting. ${calls} API calls. Expand a test to see its calls; click a row for the report.`;
  const chips=[['all','All',TESTS.length],['pass','Pass',c('pass')],['warn','Pass !',c('warn')],['fail','Fail',c('fail')],['newbug','New Bug',c('newbug')],['blocked','Blocked',c('blocked')],['skip','Skipped',c('skip')],['wait','Waiting',c('wait')],['todo','Not started',c('todo')]];
  document.getElementById('filters').innerHTML=`<span class="flabel">Status</span>`+chips.map(([k,lab,n])=>{const on=(k==='all'&&!STATUS_FILTER)||STATUS_FILTER===k?' on':'';return `<button type="button" class="fchip${on}" onclick="setStatusFilter('${k}')">${lab}<span class="n">${n}</span></button>`}).join('');
  function rows(sec){const l=TESTS.filter(t=>t.section===sec&&matchFilter(t));if(!TESTS.filter(t=>t.section===sec).length)return `<p class="sec-empty">Not started.</p>`;if(!l.length)return `<p class="sec-empty">No tests match this status.</p>`;
-  return `<table><thead><tr><th class="idcol">ID</th><th style="width:120px">Status</th><th>Test / API call</th><th style="width:150px">OLD → NEW</th><th></th></tr></thead><tbody>${l.map(t=>{const st=STATUS[t.status];
+  return `<table><thead><tr><th class="idcol">ID</th><th style="width:120px">Status</th><th>Test / API call</th><th style="width:150px">OLD → NEW</th><th></th></tr></thead><tbody>${l.map(t=>{const st=stOf(t.status);
    const hasKids=!!(t.children&&t.children.length);const open=OPEN_TESTS.has(t.id);
    const tw=hasKids?`<span class="tw" onclick="toggleTest('${t.id}',event)">${open?'▼':'▶'}</span>`:'';
    let r=`<tr class="click parent" onclick="openM('${t.id}')"><td class="idcol mono">${tw}${esc(t.id)}</td><td class="${st.cls}">${lbl(st)}</td><td>${esc(t.name)}<div class="hint">${esc(t.linear)}</div></td><td class="meta">${hasKids?t.children.length+' call'+(t.children.length>1?'s':''):'—'}</td><td class="act">${copyBtnHtml(t.id)}</td></tr>`;
-   if(hasKids&&open){for(const ch of t.children){const s2=STATUS[ch.status];
+   if(hasKids&&open){for(const ch of t.children){const s2=stOf(ch.status);
     r+=`<tr class="click child" onclick="openM('${ch.id}')"><td class="idcol mono">${esc(ch.id)}</td><td class="${s2.cls}">${lbl(s2)}</td><td class="tname"><span class="mono">${esc(ch.method)} ${esc(ch.path)}</span><div class="hint">${esc(ch.name)}</div></td><td class="meta">${ch.old.status} → ${ch.new.status}</td><td class="act">${copyBtnHtml(ch.id)}</td></tr>`}}
    return r}).join('')}</tbody></table>`}
  function sec(id,title,body){let open=OPEN_SECS.has(id);if(STATUS_FILTER&&TESTS.some(t=>t.section===id&&matchFilter(t)))open=true;return `<div class="sec${open?'':' collapsed'}" id="sec-${id}"><h2 onclick="toggleSec('${id}',event)"><span class="chev">▼</span>${title}</h2><div class="sec-body">${body}</div></div>`}
