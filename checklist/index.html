@@ -502,7 +502,7 @@ async function copyPrompt(id,btn){
 function openM(id){const f=find(id);if(!f)return;const t=f.t;let h='';
  if(f.parent) h=callHtml(t,f.n,f.parent);
  else if(t.children){const st=STATUS[t.status];
-  h=`${badge(st)}<h3>${esc(t.id)} · ${esc(t.name)}</h3>${t.children.filter(c=>c.diffs&&c.diffs.length).map(c=>diffTop(c,`${esc(c.id)} · ${esc(c.method)} ${esc(c.path)} — differences`)).join('')}<div class="meta">${esc(t.linear)}</div><p class="desc">${esc(t.simple)}</p>
+  h=`${badge(st)}<h3>${esc(t.id)} · ${esc(t.name)}</h3><div class="meta">${esc(t.linear)}</div><p class="desc">${esc(t.simple)}</p>
   <table><thead><tr><th>Call</th><th>Request</th><th>OLD</th><th>NEW</th><th>Result</th></tr></thead><tbody>${t.children.map((c,i)=>`<tr class="click" onclick="openM('${c.id}')"><td>${i+1} · ${esc(c.id)}</td><td class="mono">${esc(c.method)} ${esc(c.path)}<div class="hint">${esc(c.name)}</div></td><td>${c.old.status}</td><td>${c.new.status}</td><td class="${STATUS[c.status].cls}">${lbl(STATUS[c.status])}</td></tr>`).join('')}</tbody></table>
   <p class="hint">Click a call for its full report.</p><p><strong>${esc(t.verdict)}</strong></p>`}
  else {const st=STATUS[t.status];
