@@ -171,9 +171,10 @@ a{color:#8ebcff}
 .fchip.on{border-color:#84aed4;background:#17456d;color:#fff;box-shadow:inset 1px 1px #0c243a}
 .fchip:focus-visible,.copybtn:focus-visible,.close:focus-visible,.sec>h2:focus-visible{outline:2px dotted #111;outline-offset:2px}
 #main{
-  display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,820px),1fr));
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
   gap:18px;align-items:start;
 }
+@media(max-width:1320px){#main{grid-template-columns:1fr}}
 .sec{
   min-width:0;margin:0;border:2px solid #020405;border-radius:0;background:#242b2d;
   box-shadow:inset 1px 1px #697572,inset -1px -1px #070a0b,5px 5px 0 rgba(0,0,0,.62);
