@@ -259,8 +259,15 @@ tbody tr.click.highlight .badge.pass,tbody tr.click.highlighted .badge.pass,tbod
   .filter-panel{grid-template-columns:1fr}
   .panel-label{display:none}
   #main{grid-template-columns:1fr;gap:12px}
-  .sec-body{max-height:68vh}
-  .sec table{min-width:480px}
+  .sec,.sec-body,.sec table{min-width:0;max-width:100%}
+  .sec-body{max-height:68vh;overflow-x:clip}
+  .sec table{table-layout:auto}
+  .sec th,.sec td{overflow-wrap:break-word;word-break:normal}
+  .sec th:nth-child(4),.sec td:nth-child(4){display:none}
+  .sec td.idcol,.sec th.idcol,.sec th:nth-child(2),.sec td:nth-child(2){width:auto !important}
+  .sec th:last-child,.sec td.act{width:1% !important}
+  .sec .copybtn.rowcopy{width:auto;max-width:none;padding:4px 8px;font-size:11px}
+  html,body{overflow-x:clip}
 }
 
 </style>
