@@ -485,7 +485,8 @@ const TESTS=[
  }
 ];
 const STATUS={pass:{cls:'ok',badge:'pass',label:'Pass'},warn:{cls:'warn',badge:'warn',label:'Pass !'},fix:{cls:'ok',badge:'fix',label:'Pass !'},fail:{cls:'fail',badge:'fail',label:'Fail'},newbug:{cls:'newbug',badge:'newbug',label:'New Bug'},partial:{cls:'warn',badge:'warn',label:'Partial'},info:{cls:'todo',badge:'todo',label:'Info'},wait:{cls:'wait',badge:'wait',label:'Waiting'},todo:{cls:'todo',badge:'todo',label:'Not started'},skip:{cls:'skip',badge:'skip',label:'Skipped'},blocked:{cls:'blocked',badge:'blocked',label:'Blocked'}};
-function stOf(s){return STATUS[s]||STATUS.todo}
+function normalizeStatus(status){return status==='skipped'?'skip':status}
+function stOf(s){return STATUS[normalizeStatus(s)]||STATUS.todo}
 function lbl(st){return st.badge==='warn'?'<span class="okp">Pass</span><span class="bang">!</span>':st.badge==='fix'?'<span class="okp">Pass</span><span class="bang red">!</span>':st.label}
 function badge(st){return st.badge==='warn'?'<span class="badge pass">Pass</span><span class="bang">!</span>':st.badge==='fix'?'<span class="badge pass">Pass</span><span class="bang red">!</span>':`<span class="badge ${st.badge}">${st.label}</span>`}
 function diffNotes(c){const ds=parseDiffs(c.diffs);const L=[];
@@ -770,9 +771,9 @@ const OPEN_TESTS=new Set();
 const OPEN_SECS=new Set(['pre','jwt','otp','stripe','hours','pay','invoice','reg']); // sections start expanded
 function toggleSec(id,ev){ev.stopPropagation();const el=document.getElementById('sec-'+id);if(!el)return;el.classList.toggle('collapsed');if(el.classList.contains('collapsed'))OPEN_SECS.delete(id);else OPEN_SECS.add(id)}
 function toggleTest(id,ev){ev.stopPropagation();if(OPEN_TESTS.has(id))OPEN_TESTS.delete(id);else OPEN_TESTS.add(id);render()}
-function matchesStatus(t,status){if(!status)return true;if(t.status===status)return true;return (t.children||[]).some(ch=>ch.status===status)}
+function matchesStatus(t,status){if(!status)return true;if(normalizeStatus(t.status)===status)return true;return (t.children||[]).some(ch=>normalizeStatus(ch.status)===status)}
 function matchFilter(t){return matchesStatus(t,STATUS_FILTER)}
-function render(){const c=s=>TESTS.filter(t=>t.status===s).length;const calls=TESTS.reduce((a,t)=>a+(t.children||[]).length,0);
+function render(){const c=s=>TESTS.filter(t=>normalizeStatus(t.status)===s).length;const calls=TESTS.reduce((a,t)=>a+(t.children||[]).length,0);
  const passed=c('pass')+c('warn')+c('fix');const overallPct=TESTS.length?Math.round(passed/TESTS.length*100):0;const pending=c('todo')+c('wait');
  const overallCounts=[['pass','PASS'],['warn','PASS !'],['fix','DIFF !'],['fail','FAIL'],['newbug','NEW BUG'],['skip','SKIP'],['blocked','BLOCKED'],['wait','WAIT'],['todo','TODO']].filter(([status])=>c(status)).map(([status,label])=>`<span class="overall-chip ${status}">${label} ${c(status)}</span>`).join('');
  document.getElementById('banner').innerHTML=`<div class="overall-status"><span class="screen-label">RUN</span><strong class="run-state ${pending?'live':'done'}">${pending?'IN PROGRESS':'COMPLETE'}</strong><span class="run-total">${TESTS.length} TESTS · ${calls} CALLS</span></div><div class="overall-progress"><div class="overall-label"><span>PASS SCORE</span><span>${overallPct}% · ${passed}/${TESTS.length}</span></div><div class="overall-pass-meter"><span class="overall-pass-fill" style="width:${overallPct}%"></span></div><div class="overall-chips">${overallCounts}</div></div>`;
@@ -786,7 +787,7 @@ function render(){const c=s=>TESTS.filter(t=>t.status===s).length;const calls=TE
    if(hasKids&&open){for(const ch of t.children){const s2=stOf(ch.status);
     r+=`<tr class="click child" onclick="openM('${ch.id}')"><td class="idcol mono">${esc(ch.id)}</td><td class="${s2.cls}">${lbl(s2)}</td><td class="tname"><span class="mono">${esc(ch.method)} ${esc(ch.path)}</span><div class="hint">${esc(ch.name)}</div></td><td class="meta">${ch.old.status} → ${ch.new.status}</td><td class="act">${copyBtnHtml(ch.id)}</td></tr>`}}
    return r}).join('')}</tbody></table>`}
- function sec(id,title,body){const parents=TESTS.filter(t=>t.section===id);const totals={};for(const t of parents)totals[t.status]=(totals[t.status]||0)+1;
+ function sec(id,title,body){const parents=TESTS.filter(t=>t.section===id);const totals={};for(const t of parents){const status=normalizeStatus(t.status);totals[status]=(totals[status]||0)+1}
   const passed=(totals.pass||0)+(totals.warn||0)+(totals.fix||0);const passPct=parents.length?Math.round(passed/parents.length*100):0;
   const complete=parents.length>0&&parents.every(t=>t.status!=='todo'&&t.status!=='wait');
   const sectionFilter=SECTION_FILTERS[id]||null;
