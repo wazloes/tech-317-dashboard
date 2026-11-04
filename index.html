@@ -193,14 +193,17 @@ a{color:#8ebcff}
 }
 .sec-stats{padding:9px 10px 8px;border-bottom:2px solid #070a0b;background:#1a2224;box-shadow:inset 1px 1px #4e5a58}
 .pass-row{display:grid;grid-template-columns:minmax(90px,1fr) auto;align-items:center;gap:9px}
-.pass-meter{height:18px;border:2px solid #020405;background:#080d0e;box-shadow:inset 2px 2px #000,inset -1px -1px #55605d;overflow:hidden}
+.pass-meter{width:100%;height:18px;padding:0;border:2px solid #020405;background:#080d0e;box-shadow:inset 2px 2px #000,inset -1px -1px #55605d;overflow:hidden;cursor:pointer}
+.pass-meter:hover{border-color:#75e48e}.pass-meter:focus-visible,.stat-chip:focus-visible{outline:2px solid #e8e5d9;outline-offset:2px}
 .pass-meter-fill{
   display:block;height:100%;background:repeating-linear-gradient(90deg,#208542 0,#208542 12px,#55c873 12px,#55c873 14px);
   border-right:1px solid #8cf2a4;
 }
 .pass-percent{min-width:84px;color:#d7ddd7;font:700 12px/1 "Courier New",monospace;text-align:right}
 .stat-chips{display:flex;flex-wrap:wrap;gap:4px;margin-top:7px}
-.stat-chip{padding:2px 6px;border:1px solid #626c69;background:#273033;color:#d9d9d1;font:700 10px/1.25 "Courier New",monospace;white-space:nowrap}
+.stat-chip{appearance:none;padding:2px 6px;border:1px solid #626c69;background:#273033;color:#d9d9d1;font:700 10px/1.25 "Courier New",monospace;white-space:nowrap;cursor:pointer}
+.stat-chip:hover{filter:brightness(1.25)}.stat-chip.on{outline:2px solid #e8e5d9;outline-offset:1px;box-shadow:inset 0 0 0 1px #080d0e}
+.stat-chip.all{background:#30393b;color:#d9d9d1}
 .stat-chip.warn{background:#493c16;color:#f2d36f}.stat-chip.fix,.stat-chip.fail{background:#4b211f;color:#ff837d}
 .stat-chip.newbug{background:#4a2d18;color:#ffae66}.stat-chip.skip{background:#17383b;color:#6fd1d7}
 .stat-chip.blocked{background:#1d2d50;color:#8eb7ff}.stat-chip.wait{background:#493c16;color:#f0c95d}.stat-chip.todo{color:#b8bcb5}
@@ -528,8 +531,11 @@ function toggleDiffs(id){DIFFS_ONLY=!DIFFS_ONLY;openM(id)}
 const MUTATING=new Set(['POST','PUT','PATCH','DELETE']);
 let DB_DIFFS_ONLY=true;
 let STATUS_FILTER=null; // null = all
+const SECTION_FILTERS={};
 function toggleDbDiffs(id){DB_DIFFS_ONLY=!DB_DIFFS_ONLY;openM(id)}
 function setStatusFilter(s){STATUS_FILTER=(s==='all'?null:s);render()}
+function setSectionFilter(section,status){if(SECTION_FILTERS[section]===status)delete SECTION_FILTERS[section];else SECTION_FILTERS[section]=status;render()}
+function clearSectionFilter(section){delete SECTION_FILTERS[section];render()}
 function rowKey(row,key){const ks=Array.isArray(key)?key:[key||'id'];return ks.map(k=>String(row?.[k]??'∅')).join('|')}
 function cellStr(v){if(v===undefined)return undefined;if(v===null)return 'null';if(typeof v==='object')return JSON.stringify(v);return String(v)}
 function dbIgnoreField(f){
@@ -764,14 +770,15 @@ const OPEN_TESTS=new Set();
 const OPEN_SECS=new Set(['pre','jwt','otp','stripe','hours','pay','invoice','reg']); // sections start expanded
 function toggleSec(id,ev){ev.stopPropagation();const el=document.getElementById('sec-'+id);if(!el)return;el.classList.toggle('collapsed');if(el.classList.contains('collapsed'))OPEN_SECS.delete(id);else OPEN_SECS.add(id)}
 function toggleTest(id,ev){ev.stopPropagation();if(OPEN_TESTS.has(id))OPEN_TESTS.delete(id);else OPEN_TESTS.add(id);render()}
-function matchFilter(t){if(!STATUS_FILTER)return true;if(t.status===STATUS_FILTER)return true;return (t.children||[]).some(ch=>ch.status===STATUS_FILTER)}
+function matchesStatus(t,status){if(!status)return true;if(t.status===status)return true;return (t.children||[]).some(ch=>ch.status===status)}
+function matchFilter(t){return matchesStatus(t,STATUS_FILTER)}
 function render(){const c=s=>TESTS.filter(t=>t.status===s).length;const calls=TESTS.reduce((a,t)=>a+(t.children||[]).length,0);
  const passed=c('pass')+c('warn')+c('fix');const overallPct=TESTS.length?Math.round(passed/TESTS.length*100):0;const pending=c('todo')+c('wait');
  const overallCounts=[['pass','PASS'],['warn','PASS !'],['fix','DIFF !'],['fail','FAIL'],['newbug','NEW BUG'],['skip','SKIP'],['blocked','BLOCKED'],['wait','WAIT'],['todo','TODO']].filter(([status])=>c(status)).map(([status,label])=>`<span class="overall-chip ${status}">${label} ${c(status)}</span>`).join('');
  document.getElementById('banner').innerHTML=`<div class="overall-status"><span class="screen-label">RUN</span><strong class="run-state ${pending?'live':'done'}">${pending?'IN PROGRESS':'COMPLETE'}</strong><span class="run-total">${TESTS.length} TESTS · ${calls} CALLS</span></div><div class="overall-progress"><div class="overall-label"><span>PASS SCORE</span><span>${overallPct}% · ${passed}/${TESTS.length}</span></div><div class="overall-pass-meter"><span class="overall-pass-fill" style="width:${overallPct}%"></span></div><div class="overall-chips">${overallCounts}</div></div>`;
  const chips=[['all','All',TESTS.length],['pass','Pass',c('pass')],['warn','Pass !',c('warn')],['fix','Pass ! (good diff)',c('fix')],['fail','Fail',c('fail')],['newbug','New Bug',c('newbug')],['blocked','Blocked',c('blocked')],['skip','Skipped',c('skip')],['wait','Waiting',c('wait')],['todo','Not started',c('todo')]];
  document.getElementById('filters').innerHTML=`<span class="flabel">Status</span>`+chips.map(([k,lab,n])=>{const on=(k==='all'&&!STATUS_FILTER)||STATUS_FILTER===k?' on':'';return `<button type="button" class="fchip${on}" onclick="setStatusFilter('${k}')">${lab}<span class="n">${n}</span></button>`}).join('');
- function rows(sec){const l=TESTS.filter(t=>t.section===sec&&matchFilter(t));if(!TESTS.filter(t=>t.section===sec).length)return `<p class="sec-empty">Not started.</p>`;if(!l.length)return `<p class="sec-empty">No tests match this status.</p>`;
+ function rows(sec){const sectionFilter=SECTION_FILTERS[sec]||null;const l=TESTS.filter(t=>t.section===sec&&matchFilter(t)&&matchesStatus(t,sectionFilter));if(!TESTS.filter(t=>t.section===sec).length)return `<p class="sec-empty">Not started.</p>`;if(!l.length)return `<p class="sec-empty">No tests match this status.</p>`;
   return `<table><thead><tr><th class="idcol">ID</th><th style="width:120px">Status</th><th>Test / API call</th><th style="width:150px">OLD → NEW</th><th></th></tr></thead><tbody>${l.map(t=>{const st=stOf(t.status);
    const hasKids=!!(t.children&&t.children.length);const open=OPEN_TESTS.has(t.id);
    const tw=hasKids?`<span class="tw" onclick="toggleTest('${t.id}',event)">${open?'▼':'▶'}</span>`:'';
@@ -782,9 +789,11 @@ function render(){const c=s=>TESTS.filter(t=>t.status===s).length;const calls=TE
  function sec(id,title,body){const parents=TESTS.filter(t=>t.section===id);const totals={};for(const t of parents)totals[t.status]=(totals[t.status]||0)+1;
   const passed=(totals.pass||0)+(totals.warn||0)+(totals.fix||0);const passPct=parents.length?Math.round(passed/parents.length*100):0;
   const complete=parents.length>0&&parents.every(t=>t.status!=='todo'&&t.status!=='wait');
-  const statusCounts=[['warn','Pass !'],['fix','Pass ! good diff'],['newbug','New Bug'],['skip','Skipped'],['blocked','Blocked'],['fail','Fail'],['wait','Waiting'],['todo','Not started']].filter(([status])=>totals[status]).map(([status,label])=>`<span class="stat-chip ${status}">${label} ${totals[status]}</span>`).join('');
+  const sectionFilter=SECTION_FILTERS[id]||null;
+  const statusCounts=[['warn','Pass !'],['fix','Pass ! good diff'],['newbug','New Bug'],['skip','Skipped'],['blocked','Blocked'],['fail','Fail'],['wait','Waiting'],['todo','Not started']].filter(([status])=>totals[status]).map(([status,label])=>`<button type="button" class="stat-chip ${status}${SECTION_FILTERS[id]===status?' on':''}" aria-pressed="${SECTION_FILTERS[id]===status}" onclick="event.stopPropagation();setSectionFilter('${id}','${status}')">${label} ${totals[status]}</button>`).join('');
+  const allChip=`<button type="button" class="stat-chip all${sectionFilter?'':' on'}" aria-pressed="${!sectionFilter}" onclick="event.stopPropagation();clearSectionFilter('${id}')">All ${parents.length}</button>`;
   let open=OPEN_SECS.has(id);if(STATUS_FILTER&&TESTS.some(t=>t.section===id&&matchFilter(t)))open=true;
-  return `<section class="sec${open?'':' collapsed'}" id="sec-${id}"><h2 tabindex="0" onclick="toggleSec('${id}',event)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleSec('${id}',event)}"><span class="chev">▼</span><span class="sec-title">${title}</span>${complete?'<span class="section-completed">completed</span>':''}</h2><div class="sec-stats"><div class="pass-row"><span class="pass-meter" title="Pass rate: pass and Pass !"><span class="pass-meter-fill" style="width:${passPct}%"></span></span><span class="pass-percent">${passPct}% PASS · ${passed}/${parents.length}</span></div>${statusCounts?`<div class="stat-chips">${statusCounts}</div>`:''}</div><div class="sec-body">${body}</div></section>`}
+  return `<section class="sec${open?'':' collapsed'}" id="sec-${id}"><h2 tabindex="0" onclick="toggleSec('${id}',event)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleSec('${id}',event)}"><span class="chev">▼</span><span class="sec-title">${title}</span>${complete?'<span class="section-completed">completed</span>':''}</h2><div class="sec-stats"><div class="pass-row"><button type="button" class="pass-meter" title="Show all tests" aria-label="Show all ${title} tests" onclick="clearSectionFilter('${id}')"><span class="pass-meter-fill" style="width:${passPct}%"></span></button><span class="pass-percent">${passPct}% PASS · ${passed}/${parents.length}</span></div><div class="stat-chips">${allChip}${statusCounts}</div></div><div class="sec-body">${body}</div></section>`}
  const empty=['stripe','hours','pay','invoice','reg'].map((id,i)=>sec(id,['§3 Stripe','§4 Hours','§5 Worker pay','§6 Invoices / PDFs','§7 Regression'][i],rows(id))).join('');
  document.getElementById('main').innerHTML=sec('pre','Preconditions',rows('pre'))+sec('jwt','§1 JWT',rows('jwt'))+sec('otp','§2 OTP / v2 auth',rows('otp'))+empty;
  const h=location.hash.slice(1);if(h){const f=find(h);if(f&&f.parent&&!OPEN_TESTS.has(f.parent.id)){OPEN_TESTS.add(f.parent.id);OPEN_SECS.add(f.parent.section||'jwt');render();return}openM(h)}}
