@@ -108,15 +108,163 @@ tr.child.hidden{display:none}
 td.idcol{width:110px;font-variant-numeric:tabular-nums;white-space:nowrap}
 td.idcol .mono{font-weight:600}
 
+/* Late-80s/early-90s desktop shell. Report markup and interactions stay unchanged. */
+:root{color-scheme:dark;--bg:#0b1113;--card:#242b2d;--ink:#e8e5d9;--mute:#a4aaa4;--line:#5d6865;--soft:#30393b;
+--grn:#61d47a;--grnbg:#173d25;--amb:#f0c95d;--ambbg:#493c16;--red:#ff6e67;--redbg:#4b211f}
+body{
+  min-width:320px;
+  background-color:var(--bg);
+  background-image:radial-gradient(rgba(119,211,146,.10) .7px,transparent .7px);
+  background-size:4px 4px;
+  font:14px/1.35 Geneva,"MS Sans Serif","Segoe UI",Tahoma,sans-serif;
+}
+.wrap{max-width:1740px;margin:0 auto;padding:24px 22px 64px}
+a{color:#8ebcff}
+.app-window{
+  margin:0 0 13px;border:2px solid #020405;background:#242b2d;
+  box-shadow:inset 2px 2px #697572,inset -2px -2px #070a0b,5px 5px 0 rgba(0,0,0,.65);
+}
+.app-titlebar{
+  display:flex;align-items:center;gap:9px;min-height:39px;margin:3px;padding:7px 9px;
+  border:1px solid #7397bd;background:#17456d;color:#f3f6ec;
+}
+.app-titlebar h1{min-width:0;margin:0;font:700 20px/1 Geneva,"MS Sans Serif","Segoe UI",Tahoma,sans-serif;letter-spacing:.035em}
+.title-icon{display:grid;place-items:center;width:21px;height:21px;border:1px solid #c9e6ff;background:#182428;color:#75d58d;font:700 14px/1 monospace}
+.title-spacer{flex:1}
+.env-tag{padding:2px 6px;border:1px solid #82a9ce;color:#d8ebff;font:700 10px/1.2 "Courier New",monospace;letter-spacing:.08em}
+.linear-link{
+  padding:3px 7px;border:1px solid #a9c9e7;background:#202b2e;color:#a9d1ff;
+  box-shadow:inset 1px 1px #566565,inset -1px -1px #080b0c;font:700 11px/1.2 "Courier New",monospace;text-decoration:none;
+}
+.linear-link:hover{background:#314044;color:#d9ecff}
+.app-header-body{padding:9px}
+.banner{
+  display:grid;grid-template-columns:auto minmax(220px,1fr);gap:14px;align-items:center;
+  margin:0;padding:10px 12px;border:2px solid;border-color:#070a0b #63706e #63706e #070a0b;border-radius:0;background:#151d1f;
+  box-shadow:inset 1px 1px #020405;
+}
+.overall-status{display:grid;grid-template-columns:auto auto;align-items:baseline;gap:3px 9px;min-width:190px}
+.screen-label{color:#9ca8a5;font:700 10px/1 "Courier New",monospace;letter-spacing:.12em}
+.run-state{font:700 15px/1 "Courier New",monospace}.run-state.live{color:#f0c95d}.run-state.done{color:#61d47a}
+.run-total{grid-column:1/-1;color:#c5c9c1;font:700 11px/1.2 "Courier New",monospace}
+.overall-progress{min-width:0}
+.overall-label{display:flex;justify-content:space-between;gap:12px;margin-bottom:4px;font:700 10px/1 "Courier New",monospace;letter-spacing:.06em}
+.overall-pass-meter{height:20px;border:2px solid #020405;background:#080d0e;box-shadow:inset 2px 2px #000,inset -1px -1px #55605d;overflow:hidden}
+.overall-pass-fill{display:block;height:100%;background:repeating-linear-gradient(90deg,#208542 0,#208542 16px,#55c873 16px,#55c873 18px);border-right:1px solid #8cf2a4}
+.overall-chips{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+.overall-chip{padding:2px 5px;border:1px solid #626c69;background:#273033;color:#d9d9d1;font:700 9px/1.2 "Courier New",monospace;white-space:nowrap}
+.overall-chip.pass{background:#173d25;color:#75e48e}.overall-chip.warn{background:#493c16;color:#f2d36f}
+.overall-chip.fix,.overall-chip.fail{background:#4b211f;color:#ff837d}.overall-chip.newbug{background:#4a2d18;color:#ffae66}
+.overall-chip.skip{background:#17383b;color:#6fd1d7}.overall-chip.blocked{background:#1d2d50;color:#8eb7ff}
+.overall-chip.wait{background:#493c16;color:#f0c95d}.overall-chip.todo{color:#b8bcb5}
+.filter-panel{
+  display:grid;grid-template-columns:auto 1fr;align-items:stretch;margin:0 0 18px;border:2px solid #020405;background:#242b2d;
+  box-shadow:inset 2px 2px #697572,inset -2px -2px #070a0b,3px 3px 0 rgba(0,0,0,.55);
+}
+.panel-label{display:grid;place-items:center;padding:8px 11px;border-right:2px solid #070a0b;background:#30393b;color:#c5ccc7;font:700 10px/1 "Courier New",monospace;letter-spacing:.12em}
+.filter-panel .filters{margin:0;padding:8px 9px;gap:6px}
+.filters .flabel{color:#b6bcb7;letter-spacing:.08em;text-transform:uppercase}
+.fchip,.copybtn,.dtoggle,.close{
+  border:2px solid;border-color:#65716e #070a0b #070a0b #65716e;border-radius:0;background:#30393b;
+  box-shadow:1px 1px 0 #000;color:#e3e1d7;font-family:inherit;
+}
+.fchip{padding:4px 9px}
+.fchip:hover,.copybtn:hover,.close:hover{background:#414b4d}
+.fchip:active,.copybtn:active,.dtoggle:active,.close:active{border-color:#070a0b #65716e #65716e #070a0b;box-shadow:none}
+.fchip.on{border-color:#84aed4;background:#17456d;color:#fff;box-shadow:inset 1px 1px #0c243a}
+.fchip:focus-visible,.copybtn:focus-visible,.close:focus-visible,.sec>h2:focus-visible{outline:2px dotted #111;outline-offset:2px}
+#main{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,540px),1fr));
+  gap:18px;align-items:start;
+}
+.sec{
+  min-width:0;margin:0;border:2px solid #020405;border-radius:0;background:#242b2d;
+  box-shadow:inset 1px 1px #697572,inset -1px -1px #070a0b,5px 5px 0 rgba(0,0,0,.62);
+}
+.sec>h2{
+  min-height:36px;margin:3px;padding:7px 9px;border:1px solid #7397bd;background:#17456d;color:#f3f6ec;
+  gap:7px;font:700 15px/1.15 Geneva,"MS Sans Serif","Segoe UI",Tahoma,sans-serif;letter-spacing:.02em;
+}
+.sec>h2 .chev{width:16px;color:#fff;font-size:11px;transition:none}
+.sec-title{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.section-completed{
+  margin-left:auto;padding:2px 6px;border:1px solid #7bea94;background:#174f28;color:#bff5ca;
+  box-shadow:inset 1px 1px #29763d;font:700 10px/1.2 "Courier New",monospace;letter-spacing:.04em;text-transform:uppercase;
+}
+.sec-stats{padding:9px 10px 8px;border-bottom:2px solid #070a0b;background:#1a2224;box-shadow:inset 1px 1px #4e5a58}
+.pass-row{display:grid;grid-template-columns:minmax(90px,1fr) auto;align-items:center;gap:9px}
+.pass-meter{height:18px;border:2px solid #020405;background:#080d0e;box-shadow:inset 2px 2px #000,inset -1px -1px #55605d;overflow:hidden}
+.pass-meter-fill{
+  display:block;height:100%;background:repeating-linear-gradient(90deg,#208542 0,#208542 12px,#55c873 12px,#55c873 14px);
+  border-right:1px solid #8cf2a4;
+}
+.pass-percent{min-width:84px;color:#d7ddd7;font:700 12px/1 "Courier New",monospace;text-align:right}
+.stat-chips{display:flex;flex-wrap:wrap;gap:4px;margin-top:7px}
+.stat-chip{padding:2px 6px;border:1px solid #626c69;background:#273033;color:#d9d9d1;font:700 10px/1.25 "Courier New",monospace;white-space:nowrap}
+.stat-chip.warn{background:#493c16;color:#f2d36f}.stat-chip.fix,.stat-chip.fail{background:#4b211f;color:#ff837d}
+.stat-chip.newbug{background:#4a2d18;color:#ffae66}.stat-chip.skip{background:#17383b;color:#6fd1d7}
+.stat-chip.blocked{background:#1d2d50;color:#8eb7ff}.stat-chip.wait{background:#493c16;color:#f0c95d}.stat-chip.todo{color:#b8bcb5}
+.sec-body{max-height:620px;overflow:auto;overscroll-behavior:contain;padding:8px;background:#111719}
+.sec.collapsed .sec-stats,.sec.collapsed .sec-body{display:none}
+.sec table{border:2px solid #020405;border-radius:0;background:#1b2324;font-size:12px;table-layout:fixed}
+.sec th{padding:7px 8px;border-bottom:2px solid #070a0b;background:#30393b;color:#cbd0ca;font-size:10px;letter-spacing:.06em;text-transform:uppercase}
+.sec td{padding:8px;border-color:#3b4544;overflow-wrap:anywhere}
+.sec tbody tr.click:hover td{background:#283d35}
+.sec tr.child td{background:#20292b;font-size:11px}
+.sec tr.child td.tname{padding-left:22px}
+.sec td.idcol,.sec th.idcol{width:92px}
+.sec th:nth-child(2){width:90px}.sec th:nth-child(4){width:88px}.sec th:last-child{width:38px}
+.sec .hint{margin-top:4px;color:#a4aaa4;font-size:10px;line-height:1.25}
+.sec .meta{font-size:10px}
+.sec .copybtn.rowcopy{width:27px;height:25px;justify-content:center;padding:3px}
+.sec .copybtn.rowcopy span{display:none}
+.sec-empty{margin:0;padding:14px;border:1px dashed #626c69;background:#1b2324;color:#b6bbb5}
+.badge{border-radius:0;border:1px solid currentColor;font-family:"Courier New",monospace}
+.modal{background:rgba(21,24,21,.67)}
+.box{
+  border:2px solid #020405;border-radius:0;background:#242b2d;
+  box-shadow:inset 2px 2px #697572,inset -2px -2px #070a0b,8px 8px 0 rgba(0,0,0,.68);
+}
+.panel,.side,.sentcard,.call,.dbblock,.dbtable,.explain,.typebox{border-radius:0;background:#1b2324}
+.side pre,.req pre{border-radius:0;background:#111912;color:#9ee7a8}
+.badge.pass{color:#75e48e;background:#173d25}.badge.warn{color:#f2d36f;background:#493c16}
+.badge.fail{color:#ff837d;background:#4b211f}.badge.newbug{color:#ffae66;background:#4a2d18}
+.badge.wait{color:#f0c95d;background:#493c16}.badge.blocked{color:#8eb7ff;background:#1d2d50}
+.badge.todo{color:#b8bcb5;background:#273033}.badge.skip{color:#6fd1d7;background:#17383b}
+.warn{color:#f2d36f}.newbug{color:#ffae66}.blocked{color:#8eb7ff}.skip{color:#6fd1d7}
+.diffs{background:#3d3418}.typebox,.explain{border-color:#b98523;color:#f1cf78}.typebox strong{color:#ffd166}
+.dbtable>h4,.dbfold{background:#30393b}.dbrow{border-color:#30393b}
+.dbfields tr.chg td.v{background:#493c16}.dbfields tr.miss td.v,.dbrow.onlyold{background:#4b211f}
+.dbfields tr.extra td.v,.dbrow.onlynew{background:#173d25}
+.toast{border:2px solid #eee;border-radius:0;background:#111;color:#fff;font-family:"Courier New",monospace}
+@media(max-width:680px){
+  .wrap{padding:10px 8px 38px}
+  .app-titlebar h1{font-size:16px}
+  .env-tag{display:none}
+  .banner{grid-template-columns:1fr}
+  .filter-panel{grid-template-columns:1fr}
+  .panel-label{display:none}
+  #main{grid-template-columns:1fr;gap:12px}
+  .sec-body{max-height:68vh}
+  .sec table{min-width:480px}
+}
+
 </style>
 </head>
 <body>
 <div class="wrap">
-<h1>TECH-317 checklist</h1>
-<p class="sub">Linear story on staging5 — one box at a time. Click a row for what was sent, what came back, and OLD (local) vs NEW (staging5). Source: <a href="https://linear.app/faberconnect/issue/TECH-317/qa-waz-payments-hourstimecards-invoicing-pdfs-authotpjwt-on-staging5">TECH-317</a>.</p>
-
-<div class="banner" id="banner"></div>
-<div class="filters" id="filters"></div>
+<header class="app-window">
+  <div class="app-titlebar">
+    <span class="title-icon" aria-hidden="true">▦</span>
+    <h1>TECH-317 // QA CONTROL PANEL</h1>
+    <span class="title-spacer"></span>
+    <span class="env-tag">STAGING5 · OLD ↔ NEW</span>
+    <a class="linear-link" href="https://linear.app/faberconnect/issue/TECH-317/qa-waz-payments-hourstimecards-invoicing-pdfs-authotpjwt-on-staging5">LINEAR ↗</a>
+  </div>
+  <div class="app-header-body"><div class="banner" id="banner"></div></div>
+</header>
+<div class="filter-panel"><span class="panel-label">VIEW</span><div class="filters" id="filters"></div></div>
+<!-- A section is completed when it has tests and every parent is terminal (anything except todo or wait). -->
 <div id="main"></div>
 <p class="meta" style="margin-top:40px">HTML · personal GitHub Pages · not a Grok Page.</p>
 </div>
@@ -596,12 +744,14 @@ function openM(id){const f=find(id);if(!f)return;const t=f.t;let h='';
  document.getElementById('modal').classList.add('open');document.body.style.overflow='hidden';location.hash=id;window.scrollTo(0,0);document.getElementById('modal').scrollTop=0}
 function closeM(){document.getElementById('modal').classList.remove('open');document.body.style.overflow='';if(location.hash)history.replaceState(null,'',location.pathname)}
 const OPEN_TESTS=new Set();
-const OPEN_SECS=new Set(); // all sections start collapsed
+const OPEN_SECS=new Set(['pre','jwt','otp','stripe','hours','pay','invoice','reg']); // sections start expanded
 function toggleSec(id,ev){ev.stopPropagation();const el=document.getElementById('sec-'+id);if(!el)return;el.classList.toggle('collapsed');if(el.classList.contains('collapsed'))OPEN_SECS.delete(id);else OPEN_SECS.add(id)}
 function toggleTest(id,ev){ev.stopPropagation();if(OPEN_TESTS.has(id))OPEN_TESTS.delete(id);else OPEN_TESTS.add(id);render()}
 function matchFilter(t){if(!STATUS_FILTER)return true;if(t.status===STATUS_FILTER)return true;return (t.children||[]).some(ch=>ch.status===STATUS_FILTER)}
 function render(){const c=s=>TESTS.filter(t=>t.status===s).length;const calls=TESTS.reduce((a,t)=>a+(t.children||[]).length,0);
- document.getElementById('banner').innerHTML=`<strong>In progress.</strong> ${c('pass')} pass · ${c('warn')} pass with ! · ${c('fail')} fail · ${c('newbug')} new bug · ${c('skip')} skipped · ${c('blocked')} blocked · ${c('wait')} waiting. ${calls} API calls. Expand a test to see its calls; click a row for the report.`;
+ const overallPct=TESTS.length?Math.round(c('pass')/TESTS.length*100):0;const pending=c('todo')+c('wait');
+ const overallCounts=[['pass','PASS'],['warn','PASS !'],['fix','DIFF !'],['fail','FAIL'],['newbug','NEW BUG'],['skip','SKIP'],['blocked','BLOCKED'],['wait','WAIT'],['todo','TODO']].filter(([status])=>c(status)).map(([status,label])=>`<span class="overall-chip ${status}">${label} ${c(status)}</span>`).join('');
+ document.getElementById('banner').innerHTML=`<div class="overall-status"><span class="screen-label">RUN</span><strong class="run-state ${pending?'live':'done'}">${pending?'IN PROGRESS':'COMPLETE'}</strong><span class="run-total">${TESTS.length} TESTS · ${calls} CALLS</span></div><div class="overall-progress"><div class="overall-label"><span>STRICT PASS</span><span>${overallPct}% · ${c('pass')}/${TESTS.length}</span></div><div class="overall-pass-meter"><span class="overall-pass-fill" style="width:${overallPct}%"></span></div><div class="overall-chips">${overallCounts}</div></div>`;
  const chips=[['all','All',TESTS.length],['pass','Pass',c('pass')],['warn','Pass !',c('warn')],['fix','Pass ! (good diff)',c('fix')],['fail','Fail',c('fail')],['newbug','New Bug',c('newbug')],['blocked','Blocked',c('blocked')],['skip','Skipped',c('skip')],['wait','Waiting',c('wait')],['todo','Not started',c('todo')]];
  document.getElementById('filters').innerHTML=`<span class="flabel">Status</span>`+chips.map(([k,lab,n])=>{const on=(k==='all'&&!STATUS_FILTER)||STATUS_FILTER===k?' on':'';return `<button type="button" class="fchip${on}" onclick="setStatusFilter('${k}')">${lab}<span class="n">${n}</span></button>`}).join('');
  function rows(sec){const l=TESTS.filter(t=>t.section===sec&&matchFilter(t));if(!TESTS.filter(t=>t.section===sec).length)return `<p class="sec-empty">Not started.</p>`;if(!l.length)return `<p class="sec-empty">No tests match this status.</p>`;
@@ -612,7 +762,12 @@ function render(){const c=s=>TESTS.filter(t=>t.status===s).length;const calls=TE
    if(hasKids&&open){for(const ch of t.children){const s2=stOf(ch.status);
     r+=`<tr class="click child" onclick="openM('${ch.id}')"><td class="idcol mono">${esc(ch.id)}</td><td class="${s2.cls}">${lbl(s2)}</td><td class="tname"><span class="mono">${esc(ch.method)} ${esc(ch.path)}</span><div class="hint">${esc(ch.name)}</div></td><td class="meta">${ch.old.status} → ${ch.new.status}</td><td class="act">${copyBtnHtml(ch.id)}</td></tr>`}}
    return r}).join('')}</tbody></table>`}
- function sec(id,title,body){let open=OPEN_SECS.has(id);if(STATUS_FILTER&&TESTS.some(t=>t.section===id&&matchFilter(t)))open=true;return `<div class="sec${open?'':' collapsed'}" id="sec-${id}"><h2 onclick="toggleSec('${id}',event)"><span class="chev">▼</span>${title}</h2><div class="sec-body">${body}</div></div>`}
+ function sec(id,title,body){const parents=TESTS.filter(t=>t.section===id);const totals={};for(const t of parents)totals[t.status]=(totals[t.status]||0)+1;
+  const pass=totals.pass||0;const passPct=parents.length?Math.round(pass/parents.length*100):0;
+  const complete=parents.length>0&&parents.every(t=>t.status!=='todo'&&t.status!=='wait');
+  const statusCounts=[['warn','Pass !'],['fix','Pass ! good diff'],['newbug','New Bug'],['skip','Skipped'],['blocked','Blocked'],['fail','Fail'],['wait','Waiting'],['todo','Not started']].filter(([status])=>totals[status]).map(([status,label])=>`<span class="stat-chip ${status}">${label} ${totals[status]}</span>`).join('');
+  let open=OPEN_SECS.has(id);if(STATUS_FILTER&&TESTS.some(t=>t.section===id&&matchFilter(t)))open=true;
+  return `<section class="sec${open?'':' collapsed'}" id="sec-${id}"><h2 tabindex="0" onclick="toggleSec('${id}',event)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleSec('${id}',event)}"><span class="chev">▼</span><span class="sec-title">${title}</span>${complete?'<span class="section-completed">completed</span>':''}</h2><div class="sec-stats"><div class="pass-row"><span class="pass-meter" title="Strict pass rate: pass only"><span class="pass-meter-fill" style="width:${passPct}%"></span></span><span class="pass-percent">${passPct}% PASS · ${pass}/${parents.length}</span></div>${statusCounts?`<div class="stat-chips">${statusCounts}</div>`:''}</div><div class="sec-body">${body}</div></section>`}
  const empty=['stripe','hours','pay','invoice','reg'].map((id,i)=>sec(id,['§3 Stripe','§4 Hours','§5 Worker pay','§6 Invoices / PDFs','§7 Regression'][i],rows(id))).join('');
  document.getElementById('main').innerHTML=sec('pre','Preconditions',rows('pre'))+sec('jwt','§1 JWT',rows('jwt'))+sec('otp','§2 OTP / v2 auth',rows('otp'))+empty;
  const h=location.hash.slice(1);if(h){const f=find(h);if(f&&f.parent&&!OPEN_TESTS.has(f.parent.id)){OPEN_TESTS.add(f.parent.id);OPEN_SECS.add(f.parent.section||'jwt');render();return}openM(h)}}
