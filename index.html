@@ -209,6 +209,8 @@ a{color:#8ebcff}
 .sec table{border:2px solid #020405;border-radius:0;background:#1b2324;font-size:12px;table-layout:fixed}
 .sec th{padding:7px 8px;border-bottom:2px solid #070a0b;background:#30393b;color:#cbd0ca;font-size:10px;letter-spacing:.06em;text-transform:uppercase}
 .sec td{padding:8px;border-color:#3b4544;overflow-wrap:anywhere}
+.sec tr.parent.expanded td{background:#233630}
+.sec tr.parent.expanded:hover td{background:#2e493e}
 .sec tbody tr.click:hover td{background:#283d35}
 .sec tr.child td{background:#20292b;font-size:11px}
 .sec tr.child td.tname{padding-left:22px}
@@ -231,6 +233,22 @@ a{color:#8ebcff}
 .badge.wait{color:#f0c95d;background:#493c16}.badge.blocked{color:#8eb7ff;background:#1d2d50}
 .badge.todo{color:#b8bcb5;background:#273033}.badge.skip{color:#6fd1d7;background:#17383b}
 .warn{color:#f2d36f}.newbug{color:#ffae66}.blocked{color:#8eb7ff}.skip{color:#6fd1d7}
+.box tbody tr.click{color:var(--ink)}
+tbody tr.click:hover{background:#283d35;color:var(--ink)}
+tbody tr.click:active,tbody tr.click:focus-within,tbody tr.click.selected,tbody tr.click.highlight,
+tbody tr.click.highlighted,tbody tr.click.active,tbody tr.click.expanded,tbody tr.click[aria-selected="true"],
+tbody tr.click[aria-current="true"]{background:#2b443a;color:var(--ink)}
+tbody tr.click:active>td,tbody tr.click:focus-within>td,tbody tr.click.selected>td,tbody tr.click.highlight>td,
+tbody tr.click.highlighted>td,tbody tr.click.active>td,tbody tr.click.expanded>td,tbody tr.click[aria-selected="true"]>td,
+tbody tr.click[aria-current="true"]>td{background:#2b443a}
+tr.child td{background:#20292b}
+tr.child:hover td{background:#2b4238}
+tbody tr.click:hover .ok,tbody tr.click:active .ok,tbody tr.click.selected .ok,tbody tr.click.highlight .ok,
+tbody tr.click.highlighted .ok,tbody tr.click[aria-selected="true"] .ok{color:var(--grn)}
+tbody tr.click:hover .badge.pass,tbody tr.click:active .badge.pass,tbody tr.click.selected .badge.pass,
+tbody tr.click.highlight .badge.pass,tbody tr.click.highlighted .badge.pass,tbody tr.click[aria-selected="true"] .badge.pass{
+  color:#75e48e;background:#173d25;
+}
 .diffs{background:#3d3418}.typebox,.explain{border-color:#b98523;color:#f1cf78}.typebox strong{color:#ffd166}
 .dbtable>h4,.dbfold{background:#30393b}.dbrow{border-color:#30393b}
 .dbfields tr.chg td.v{background:#493c16}.dbfields tr.miss td.v,.dbrow.onlyold{background:#4b211f}
@@ -757,7 +775,7 @@ function render(){const c=s=>TESTS.filter(t=>t.status===s).length;const calls=TE
   return `<table><thead><tr><th class="idcol">ID</th><th style="width:120px">Status</th><th>Test / API call</th><th style="width:150px">OLD → NEW</th><th></th></tr></thead><tbody>${l.map(t=>{const st=stOf(t.status);
    const hasKids=!!(t.children&&t.children.length);const open=OPEN_TESTS.has(t.id);
    const tw=hasKids?`<span class="tw" onclick="toggleTest('${t.id}',event)">${open?'▼':'▶'}</span>`:'';
-   let r=`<tr class="click parent" onclick="openM('${t.id}')"><td class="idcol mono">${tw}${esc(t.id)}</td><td class="${st.cls}">${lbl(st)}</td><td>${esc(t.name)}<div class="hint">${esc(t.linear)}</div></td><td class="meta">${hasKids?t.children.length+' call'+(t.children.length>1?'s':''):'—'}</td><td class="act">${copyBtnHtml(t.id)}</td></tr>`;
+   let r=`<tr class="click parent${open?' expanded':''}" onclick="openM('${t.id}')"><td class="idcol mono">${tw}${esc(t.id)}</td><td class="${st.cls}">${lbl(st)}</td><td>${esc(t.name)}<div class="hint">${esc(t.linear)}</div></td><td class="meta">${hasKids?t.children.length+' call'+(t.children.length>1?'s':''):'—'}</td><td class="act">${copyBtnHtml(t.id)}</td></tr>`;
    if(hasKids&&open){for(const ch of t.children){const s2=stOf(ch.status);
     r+=`<tr class="click child" onclick="openM('${ch.id}')"><td class="idcol mono">${esc(ch.id)}</td><td class="${s2.cls}">${lbl(s2)}</td><td class="tname"><span class="mono">${esc(ch.method)} ${esc(ch.path)}</span><div class="hint">${esc(ch.name)}</div></td><td class="meta">${ch.old.status} → ${ch.new.status}</td><td class="act">${copyBtnHtml(ch.id)}</td></tr>`}}
    return r}).join('')}</tbody></table>`}
